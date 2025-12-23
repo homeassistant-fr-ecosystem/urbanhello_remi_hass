@@ -1,6 +1,6 @@
 from datetime import timedelta
 from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER, MODEL, get_device_info
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,13 +53,9 @@ class RemiLight(LightEntity):
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return {
-            "identifiers": {(DOMAIN, self._id)},
-            "name": self._name,
-            "manufacturer": "UrbanHello",
-            "model": "Rémi Clock",
-            "via_device": (DOMAIN, self._id),
-        }
+        info = get_device_info(DOMAIN, self._id, self._name, self._device)
+        info["via_device"] = (DOMAIN, self._id)
+        return info
 
     @property
     def name(self):
