@@ -25,6 +25,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class RemiVolumeNumber(NumberEntity):
     """Representation of a Rémi volume control."""
 
+    _attr_translation_key = "volume"
+
     def __init__(self, api, device):
         self._api = api
         self._device = device
@@ -89,6 +91,8 @@ class RemiVolumeNumber(NumberEntity):
 
 class RemiNightLightNumber(NumberEntity):
     """Representation of a Rémi night light level control."""
+
+    _attr_translation_key = "night_light_level"
 
     def __init__(self, api, device):
         self._api = api

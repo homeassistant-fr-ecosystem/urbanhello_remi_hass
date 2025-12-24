@@ -2,6 +2,21 @@ DOMAIN = "remi"
 MANUFACTURER = "UrbanHello"
 MODEL = "Rémi Clock"
 
+# Face name translation keys
+FACE_TRANSLATION_KEYS = {
+    "sleepyFace": "sleepyFace",
+    "awakeFace": "awakeFace",
+    "blankFace": "blankFace",
+    "semiAwakeFace": "semiAwakeFace",
+    "happyFace": "happyFace",
+    "sadFace": "sadFace",
+    "angryFace": "angryFace",
+    "neutralFace": "neutralFace",
+    "excitedFace": "excitedFace",
+    "coolFace": "coolFace",
+    "winkFace": "winkFace",
+}
+
 
 def get_device_info(domain, device_id, device_name, device_data=None):
     """Generate device info dictionary for Home Assistant."""

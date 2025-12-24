@@ -316,23 +316,3 @@ class RemiAPI:
         if self._session and not self._session.closed:
             await self._session.close()
             self._session = None
-
-
-# Simple demo usage when running this file directly (for manual testing)
-if __name__ == "__main__":
-    async def _demo():
-        logging.basicConfig(level=logging.DEBUG)
-        api = RemiAPI("your-username", "your-password")
-        try:
-            await api.login()
-            remis = await api.list_remis()
-            print("Remis:", remis)
-            if remis:
-                rid = remis[0].get("objectId")
-                if rid:
-                    info = await api.get_remi_info(rid)
-                    print("Info:", info)
-        finally:
-            await api.close()
-
-    asyncio.run(_demo())

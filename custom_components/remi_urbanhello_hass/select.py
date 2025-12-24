@@ -24,6 +24,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class RemiFaceSelect(SelectEntity):
     """Representation of a Rémi face selector."""
 
+    _attr_translation_key = "face"
+
     def __init__(self, api, device):
         self._api = api
         self._device = device
@@ -62,8 +64,23 @@ class RemiFaceSelect(SelectEntity):
 
     @property
     def icon(self):
-        """Return the icon to use in the frontend."""
-        return "mdi:emoticon-happy-outline"
+        """Return the icon to use in the frontend based on current face."""
+        if self._current_face is None:
+            return "mdi:emoticon-neutral-outline"
+
+        face_lower = self._current_face.lower()
+
+        # Map face names to appropriate icons
+        if "sleepy" in face_lower or "sleep" in face_lower:
+            return "mdi:sleep"
+        elif "awake" in face_lower or "happy" in face_lower:
+            return "mdi:emoticon-happy"
+        elif "blank" in face_lower:
+            return "mdi:emoticon-neutral"
+        elif "semiAwake" in face_lower:
+            return "mdi:emoticon-cool"
+        else:
+            return "mdi:emoticon-outline"
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected face."""

@@ -1,5 +1,6 @@
 from datetime import timedelta
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
+from homeassistant.helpers.entity import EntityCategory
 from .const import DOMAIN, MANUFACTURER, MODEL, get_device_info
 import logging
 
@@ -25,8 +26,9 @@ class RemiConnectivityBinarySensor(BinarySensorEntity):
     """Representation of a Rémi connectivity binary sensor."""
 
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
-    _attr_entity_category = "diagnostic"
-    _attr_entity_registry_enabled_default = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_translation_key = "connectivity"
 
     def __init__(self, api, device):
         self._api = api

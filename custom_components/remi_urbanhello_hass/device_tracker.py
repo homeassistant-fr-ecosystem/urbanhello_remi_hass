@@ -1,6 +1,7 @@
 from datetime import timedelta
 from homeassistant.components.device_tracker import SourceType
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
+from homeassistant.helpers.entity import EntityCategory
 from .const import DOMAIN, MANUFACTURER, MODEL, get_device_info
 import logging
 
@@ -25,7 +26,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class RemiDeviceTracker(ScannerEntity):
     """Representation of a Rémi device tracker."""
 
-    _attr_entity_category = "diagnostic"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
 
     def __init__(self, api, device):
         self._api = api

@@ -1,5 +1,5 @@
 from datetime import timedelta
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import Entity, EntityCategory
 from homeassistant.const import PERCENTAGE
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription
 from .const import DOMAIN, MANUFACTURER, MODEL, get_device_info
@@ -27,6 +27,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class RemiTemperatureSensor(Entity):
     """Representation of a Rémi temperature sensor."""
+
+    _attr_translation_key = "temperature"
 
     def __init__(self, api, device):
         self._api = api
@@ -74,12 +76,15 @@ class RemiTemperatureSensor(Entity):
 class RemiFaceSensor(Entity):
     """Representation of a Rémi face sensor."""
 
+    _attr_translation_key = "face"
+
     def __init__(self, api, device):
         self._api = api
         self._device = device
         self._name = f"Rémi {device.get('name', 'Unknown Device')} Face"
         self._id = device["objectId"]
         self._face = None
+        self._attr_device_class = "enum"
 
     @property
     def device_info(self):
@@ -102,9 +107,31 @@ class RemiFaceSensor(Entity):
         return self._face
 
     @property
+    def options(self):
+        """Return possible face options for the enum sensor."""
+        if self._api.faces:
+            return list(self._api.faces.keys())
+        return ["sleepyFace", "awakeFace", "blankFace", "semiAwakeFace"]
+
+    @property
     def icon(self):
-        """Return the icon to use in the frontend."""
-        return "mdi:emoticon"
+        """Return the icon to use in the frontend based on current face."""
+        if self._face is None:
+            return "mdi:emoticon-neutral-outline"
+
+        face_lower = self._face.lower()
+
+        # Map face names to appropriate icons
+        if "sleepy" in face_lower or "sleep" in face_lower:
+            return "mdi:sleep"
+        elif "awake" in face_lower or "happy" in face_lower:
+            return "mdi:emoticon-happy"
+        elif "blank" in face_lower:
+            return "mdi:emoticon-neutral"
+        elif "semiAwake" in face_lower:
+            return "mdi:emoticon-cool"
+        else:
+            return "mdi:emoticon-outline"
 
     async def async_update(self):
         """Fetch the latest face from the API."""
@@ -117,6 +144,8 @@ class RemiFaceSensor(Entity):
 
 class RemiRawDataSensor(Entity):
     """Representation of a Rémi raw data sensor with all API fields."""
+
+    _attr_translation_key = "raw_data"
 
     def __init__(self, api, device):
         self._api = api
@@ -197,8 +226,9 @@ class RemiRawDataSensor(Entity):
 class RemiRssiSensor(Entity):
     """Representation of a Rémi RSSI (WiFi signal strength) sensor."""
 
-    _attr_entity_category = "diagnostic"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_entity_registry_enabled_default = True
+    _attr_translation_key = "rssi"
 
     def __init__(self, api, device):
         self._api = api
