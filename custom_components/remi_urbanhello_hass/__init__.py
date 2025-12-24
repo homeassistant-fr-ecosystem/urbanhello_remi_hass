@@ -49,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Forward setup to all platforms
     await hass.config_entries.async_forward_entry_setups(
-        entry, ["light", "sensor", "binary_sensor", "number", "device_tracker"]
+        entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select"]
     )
     return True
 
@@ -63,7 +63,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, ["light", "sensor", "binary_sensor", "number", "device_tracker"]
+        entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select"]
     )
 
     if unload_ok:
