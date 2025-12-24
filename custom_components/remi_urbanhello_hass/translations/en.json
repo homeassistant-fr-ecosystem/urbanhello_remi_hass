@@ -31,13 +31,7 @@
           "awakeFace": "Awake",
           "blankFace": "Blank",
           "semiAwakeFace": "Semi-Awake",
-          "happyFace": "Happy",
-          "sadFace": "Sad",
-          "angryFace": "Angry",
-          "neutralFace": "Neutral",
-          "excitedFace": "Excited",
-          "coolFace": "Cool",
-          "winkFace": "Wink"
+          "smilyFace": "Smiley"
         }
       },
       "raw_data": {
@@ -68,13 +62,7 @@
           "awakeFace": "Awake",
           "blankFace": "Blank",
           "semiAwakeFace": "Semi-Awake",
-          "happyFace": "Happy",
-          "sadFace": "Sad",
-          "angryFace": "Angry",
-          "neutralFace": "Neutral",
-          "excitedFace": "Excited",
-          "coolFace": "Cool",
-          "winkFace": "Wink"
+          "smilyFace": "Smiley"
         }
       }
     },

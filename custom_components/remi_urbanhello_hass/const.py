@@ -8,13 +8,7 @@ FACE_TRANSLATION_KEYS = {
     "awakeFace": "awakeFace",
     "blankFace": "blankFace",
     "semiAwakeFace": "semiAwakeFace",
-    "happyFace": "happyFace",
-    "sadFace": "sadFace",
-    "angryFace": "angryFace",
-    "neutralFace": "neutralFace",
-    "excitedFace": "excitedFace",
-    "coolFace": "coolFace",
-    "winkFace": "winkFace",
+    "smilyFace": "smilyFace",
 }
 
 

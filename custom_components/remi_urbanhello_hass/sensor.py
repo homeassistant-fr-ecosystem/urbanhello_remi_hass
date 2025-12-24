@@ -111,7 +111,7 @@ class RemiFaceSensor(Entity):
         """Return possible face options for the enum sensor."""
         if self._api.faces:
             return list(self._api.faces.keys())
-        return ["sleepyFace", "awakeFace", "blankFace", "semiAwakeFace"]
+        return ["sleepyFace", "awakeFace", "blankFace", "semiAwakeFace", "smilyFace"]
 
     @property
     def icon(self):
@@ -124,12 +124,14 @@ class RemiFaceSensor(Entity):
         # Map face names to appropriate icons
         if "sleepy" in face_lower or "sleep" in face_lower:
             return "mdi:sleep"
-        elif "awake" in face_lower or "happy" in face_lower:
+        elif "awake" in face_lower:
             return "mdi:emoticon-happy"
         elif "blank" in face_lower:
             return "mdi:emoticon-neutral"
-        elif "semiAwake" in face_lower:
+        elif "semiawake" in face_lower:
             return "mdi:emoticon-cool"
+        elif "smily" in face_lower or "smile" in face_lower:
+            return "mdi:emoticon-happy-outline"
         else:
             return "mdi:emoticon-outline"
 

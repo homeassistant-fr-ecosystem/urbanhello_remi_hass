@@ -60,7 +60,7 @@ class RemiFaceSelect(SelectEntity):
         # If we haven't loaded options yet, get them from the API
         if not self._options and self._api.faces:
             self._options = sorted(list(self._api.faces.keys()))
-        return self._options if self._options else ["sleepyFace", "awakeFace"]
+        return self._options if self._options else ["sleepyFace", "awakeFace", "blankFace", "semiAwakeFace", "smilyFace"]
 
     @property
     def icon(self):
@@ -73,12 +73,14 @@ class RemiFaceSelect(SelectEntity):
         # Map face names to appropriate icons
         if "sleepy" in face_lower or "sleep" in face_lower:
             return "mdi:sleep"
-        elif "awake" in face_lower or "happy" in face_lower:
+        elif "awake" in face_lower:
             return "mdi:emoticon-happy"
         elif "blank" in face_lower:
             return "mdi:emoticon-neutral"
-        elif "semiAwake" in face_lower:
+        elif "semiawake" in face_lower:
             return "mdi:emoticon-cool"
+        elif "smily" in face_lower or "smile" in face_lower:
+            return "mdi:emoticon-happy-outline"
         else:
             return "mdi:emoticon-outline"
 
