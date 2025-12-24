@@ -17,6 +17,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     for device in devices:
         _LOGGER.debug("Setting up light for device: %s", device)
         lights.append(RemiLight(api, device))
+        lights.append(RemiNightLight(api, device))
+        lights.append(RemiNightLightMin(api, device))
 
     async_add_entities(lights, update_before_add=True)
 
@@ -108,3 +110,149 @@ class RemiLight(LightEntity):
             self._is_on = info["face"] == self._face_on
         except Exception as e:
             _LOGGER.error("Failed to update light info for %s: %s", self._name, e)
+
+
+class RemiNightLight(LightEntity):
+    """Representation of a Rémi Night Light (brightness-only control)."""
+
+    _attr_translation_key = "night_light"
+
+    def __init__(self, api, device):
+        self._api = api
+        self._device = device
+        self._name = f"Rémi {device.get('name', 'Unknown Device')} Night Light"
+        self._id = device["objectId"]
+        self._brightness = device.get("luminosity", 0)
+
+        # Use ColorMode for supported color modes
+        self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for the light."""
+        return f"{self._id}_night_light"
+
+    @property
+    def device_info(self):
+        """Return device information to link the entity to the integration."""
+        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+
+    @property
+    def name(self):
+        """Return the name of the light."""
+        return self._name
+
+    @property
+    def is_on(self):
+        """Return the state of the light."""
+        return self._brightness > 0
+
+    @property
+    def color_mode(self):
+        """Return the current color mode of the light."""
+        return ColorMode.BRIGHTNESS
+
+    @property
+    def brightness(self):
+        """Return the brightness of the light (0-255)."""
+        # Convert brightness from 0-100 to 0-255
+        return min(int(self._brightness * 255 / 100), 255)
+
+    async def async_turn_on(self, **kwargs):
+        """Turn on the light."""
+        # Get the brightness from kwargs, defaulting to 255
+        brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
+
+        # Convert brightness from 0-255 to 0-100 for the API
+        api_brightness = min(int(brightness * 100 / 255), 100)
+
+        await self._api.set_brightness(self._id, api_brightness)
+        self._brightness = api_brightness
+        _LOGGER.debug("Set Night Light brightness to %d for %s", api_brightness, self._name)
+
+    async def async_turn_off(self, **_kwargs):
+        """Turn off the light."""
+        await self._api.set_brightness(self._id, 0)
+        self._brightness = 0
+        _LOGGER.debug("Turned off Night Light for %s", self._name)
+
+    async def async_update(self):
+        """Fetch the latest brightness from the API."""
+        try:
+            info = await self._api.get_remi_info(self._id)
+            self._brightness = info.get("luminosity", self._brightness)
+        except Exception as e:
+            _LOGGER.error("Failed to update Night Light for %s: %s", self._name, e)
+
+
+class RemiNightLightMin(LightEntity):
+    """Representation of a Rémi night light minimum level."""
+
+    _attr_translation_key = "night_light_min"
+
+    def __init__(self, api, device):
+        self._api = api
+        self._device = device
+        self._name = f"Rémi {device.get('name', 'Unknown Device')} Night Light Min"
+        self._id = device["objectId"]
+        self._brightness = device.get("light_min", 0)
+
+        # Use ColorMode for supported color modes
+        self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for the light."""
+        return f"{self._id}_night_light_min"
+
+    @property
+    def device_info(self):
+        """Return device information to link the entity to the integration."""
+        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+
+    @property
+    def name(self):
+        """Return the name of the light."""
+        return self._name
+
+    @property
+    def is_on(self):
+        """Return the state of the light."""
+        return self._brightness > 0
+
+    @property
+    def color_mode(self):
+        """Return the current color mode of the light."""
+        return ColorMode.BRIGHTNESS
+
+    @property
+    def brightness(self):
+        """Return the brightness of the light (0-255)."""
+        # Convert brightness from 0-100 to 0-255
+        return min(int(self._brightness * 255 / 100), 255)
+
+    async def async_turn_on(self, **kwargs):
+        """Turn on the light."""
+        # Get the brightness from kwargs, defaulting to 255
+        brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
+
+        # Convert brightness from 0-255 to 0-100 for the API
+        api_brightness = min(int(brightness * 100 / 255), 100)
+
+        await self._api.set_night_luminosity(self._id, api_brightness)
+        self._brightness = api_brightness
+        _LOGGER.debug("Set night light min to %d for %s", api_brightness, self._name)
+
+    async def async_turn_off(self, **_kwargs):
+        """Turn off the light."""
+        await self._api.set_night_luminosity(self._id, 0)
+        self._brightness = 0
+        _LOGGER.debug("Turned off night light min for %s", self._name)
+
+    async def async_update(self):
+        """Fetch the latest night light minimum level from the API."""
+        try:
+            info = await self._api.get_remi_info(self._id)
+            self._brightness = info.get("light_min", self._brightness)
+        except Exception as e:
+            _LOGGER.error("Failed to update night light min for %s: %s", self._name, e)
