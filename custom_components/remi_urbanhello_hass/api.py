@@ -249,6 +249,10 @@ class RemiAPI:
         """Set the device volume."""
         return await self._update_remi(object_id, {"volume": level})
 
+    async def set_noise_threshold(self, object_id: str, threshold: int) -> Any:
+        """Set the noise notification threshold."""
+        return await self._update_remi(object_id, {"noise_threshold": threshold})
+
     async def turn_on(self, object_id: str) -> Any:
         """Turn on the device by setting an appropriate face (sleepyFace by convention)."""
         face_id = self.faces.get("sleepyFace")

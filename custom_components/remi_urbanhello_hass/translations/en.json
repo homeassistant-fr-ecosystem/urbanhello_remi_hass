@@ -52,6 +52,12 @@
       },
       "night_light_level": {
         "name": "Night Light Level"
+      },
+      "noise_threshold": {
+        "name": "Noise Notification Threshold"
+      },
+      "night_face_level": {
+        "name": "Night Face Level"
       }
     },
     "select": {
@@ -69,10 +75,8 @@
     "light": {
       "remi": {
         "name": "Night Light"
-      }
-    },
-    "night_light": {
-      "remi": {
+      },
+      "night_light": {
         "name": "Night Light"
       }
     },

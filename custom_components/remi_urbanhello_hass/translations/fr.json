@@ -52,6 +52,12 @@
       },
       "night_light_level": {
         "name": "Niveau de veilleuse"
+      },
+      "noise_threshold": {
+        "name": "Seuil de notification de bruit"
+      },
+      "night_face_level": {
+        "name": "Niveau du visage de nuit"
       }
     },
     "select": {
@@ -69,10 +75,8 @@
     "light": {
       "remi": {
         "name": "Veilleuse"
-      }
-    },
-    "night_light": {
-      "remi": {
+      },
+      "night_light": {
         "name": "Veilleuse"
       }
     },

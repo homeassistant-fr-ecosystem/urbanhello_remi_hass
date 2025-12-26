@@ -190,24 +190,7 @@ class RemiRawDataSensor(Entity):
 
         # Add all raw fields
         for key, value in raw.items():
-            # Skip internal fields that start with underscore
-            if not key.startswith("_"):
-                attributes[key] = value
-
-        # Add parsed/normalized fields from the API
-        if "temperature" in self._raw_data:
-            attributes["temperature_normalized"] = self._raw_data["temperature"]
-        if "luminosity" in self._raw_data:
-            attributes["luminosity_normalized"] = self._raw_data["luminosity"]
-        if "face" in self._raw_data:
-            attributes["face_id"] = self._raw_data["face"]
-        if "volume" in self._raw_data:
-            attributes["volume_normalized"] = self._raw_data["volume"]
-        if "light_min" in self._raw_data:
-            attributes["light_min_normalized"] = self._raw_data["light_min"]
-        if "name" in self._raw_data:
-            attributes["device_name"] = self._raw_data["name"]
-
+            attributes[key] = value
         return attributes
 
     @property
