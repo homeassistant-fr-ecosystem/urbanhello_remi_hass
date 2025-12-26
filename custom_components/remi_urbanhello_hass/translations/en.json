@@ -71,6 +71,11 @@
         "name": "Night Light"
       }
     },
+    "night_light": {
+      "remi": {
+        "name": "Night Light"
+      }
+    },
     "device_tracker": {
       "remi": {
         "name": "Network Status"

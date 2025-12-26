@@ -1,6 +1,7 @@
 DOMAIN = "remi"
 MANUFACTURER = "UrbanHello"
 MODEL = "Rémi Clock"
+BRAND_NAME = "Rémi"
 
 # Face name translation keys
 FACE_TRANSLATION_KEYS = {

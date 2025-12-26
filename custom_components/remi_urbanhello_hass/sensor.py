@@ -2,7 +2,7 @@ from datetime import timedelta
 from homeassistant.helpers.entity import Entity, EntityCategory
 from homeassistant.const import PERCENTAGE
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription
-from .const import DOMAIN, MANUFACTURER, MODEL, get_device_info
+from .const import DOMAIN, BRAND_NAME, MANUFACTURER, MODEL, get_device_info
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class RemiTemperatureSensor(Entity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')} temperature"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} temperature"
         self._id = device["objectId"]
         self._temperature = None
 
@@ -81,7 +81,7 @@ class RemiFaceSensor(Entity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')} Face"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Face"
         self._id = device["objectId"]
         self._face = None
         self._attr_device_class = "enum"
@@ -89,7 +89,7 @@ class RemiFaceSensor(Entity):
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
 
     @property
     def name(self):
@@ -152,14 +152,14 @@ class RemiRawDataSensor(Entity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')} Raw Data"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Raw Data"
         self._id = device["objectId"]
         self._raw_data = {}
 
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
 
     @property
     def name(self):
@@ -235,14 +235,14 @@ class RemiRssiSensor(Entity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')} RSSI"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} RSSI"
         self._id = device["objectId"]
         self._rssi = None
 
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
 
     @property
     def name(self):

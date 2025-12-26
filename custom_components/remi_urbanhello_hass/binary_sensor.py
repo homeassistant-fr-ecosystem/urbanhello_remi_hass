@@ -1,7 +1,7 @@
 from datetime import timedelta
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
-from .const import DOMAIN, MANUFACTURER, MODEL, get_device_info
+from .const import DOMAIN, BRAND_NAME, MANUFACTURER, MODEL, get_device_info
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,14 +33,14 @@ class RemiConnectivityBinarySensor(BinarySensorEntity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')} Connectivity"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Connectivity"
         self._id = device["objectId"]
         self._is_on = None
 
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
 
     @property
     def name(self):

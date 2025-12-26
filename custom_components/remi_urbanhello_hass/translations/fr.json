@@ -71,6 +71,11 @@
         "name": "Veilleuse"
       }
     },
+    "night_light": {
+      "remi": {
+        "name": "Veilleuse"
+      }
+    },
     "device_tracker": {
       "remi": {
         "name": "État réseau"

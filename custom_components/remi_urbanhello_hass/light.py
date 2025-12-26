@@ -1,6 +1,6 @@
 from datetime import timedelta
 from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
-from .const import DOMAIN, MANUFACTURER, MODEL, get_device_info
+from .const import DOMAIN, BRAND_NAME, MANUFACTURER, MODEL, get_device_info
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class RemiLight(LightEntity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')}"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')}"
         self._id = device["objectId"]
         self._brightness = device.get("luminosity", 0)
 
@@ -120,7 +120,7 @@ class RemiNightLight(LightEntity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')} Night Light"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Night Light"
         self._id = device["objectId"]
         self._brightness = device.get("luminosity", 0)
 
@@ -135,7 +135,7 @@ class RemiNightLight(LightEntity):
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
 
     @property
     def name(self):
@@ -193,7 +193,7 @@ class RemiNightLightMin(LightEntity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')} Night Light Min"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Night Light Min"
         self._id = device["objectId"]
         self._brightness = device.get("light_min", 0)
 
@@ -208,7 +208,7 @@ class RemiNightLightMin(LightEntity):
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
 
     @property
     def name(self):

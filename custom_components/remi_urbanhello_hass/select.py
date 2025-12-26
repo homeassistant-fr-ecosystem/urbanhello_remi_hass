@@ -1,6 +1,6 @@
 from datetime import timedelta
 from homeassistant.components.select import SelectEntity
-from .const import DOMAIN, MANUFACTURER, MODEL, get_device_info
+from .const import DOMAIN, BRAND_NAME, MANUFACTURER, MODEL, get_device_info
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class RemiFaceSelect(SelectEntity):
     def __init__(self, api, device):
         self._api = api
         self._device = device
-        self._name = f"Rémi {device.get('name', 'Unknown Device')} Face"
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Face"
         self._id = device["objectId"]
         self._current_face = None
         self._options = []
@@ -37,7 +37,7 @@ class RemiFaceSelect(SelectEntity):
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"Rémi {self._device.get('name', 'Unknown Device')}", self._device)
+        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
 
     @property
     def name(self):
