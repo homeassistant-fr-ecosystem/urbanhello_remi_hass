@@ -1,3 +1,4 @@
+from homeassistant.helpers.entity import DeviceInfo
 DOMAIN = "remi"
 MANUFACTURER = "UrbanHello"
 MODEL = "Rémi Clock"
@@ -15,20 +16,14 @@ FACE_TRANSLATION_KEYS = {
 
 def get_device_info(domain, device_id, device_name, device_data=None):
     """Generate device info dictionary for Home Assistant."""
-    info = {
-        "identifiers": {(domain, device_id)},
-        "name": device_name,
-        "manufacturer": MANUFACTURER,
-        "model": MODEL,
-    }
-
-    if device_data:
-        # Add firmware version
-        if "sw_version" in device_data and device_data["sw_version"]:
-            info["sw_version"] = device_data["sw_version"]
-
-        # Add hardware version (Bluetooth version)
-        if "hw_version" in device_data and device_data["hw_version"]:
-            info["hw_version"] = device_data["hw_version"]
-
-    return info
+    device_data = device_data or {}
+    raw_data = device_data.get("raw", {})
+    return DeviceInfo(
+        identifiers={(domain, device_id)},
+        name=device_name,
+        manufacturer=MANUFACTURER,
+        model=MODEL,
+        sw_version=raw_data.get("current_firmware_version"),
+        hw_version=raw_data.get("bt_hardware_version"),
+        connections={("ip", raw_data.get("ipv4Address"))} if raw_data.get("ipv4Address") else set(),
+    )
