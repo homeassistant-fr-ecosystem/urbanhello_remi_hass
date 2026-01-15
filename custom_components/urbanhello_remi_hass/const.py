@@ -1,5 +1,5 @@
 from homeassistant.helpers.entity import DeviceInfo
-DOMAIN = "remi"
+DOMAIN = "urbanhello_remi"
 MANUFACTURER = "UrbanHello"
 MODEL = "Rémi Clock"
 BRAND_NAME = "Rémi"

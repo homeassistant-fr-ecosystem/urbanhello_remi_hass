@@ -1,0 +1,12 @@
+
+{
+    "domain": "urbanhello_remi",
+    "name": "Rémi UrbanHello",
+    "version": "1.0.0",
+    "dependencies": [],
+    "codeowners": ["@pdruart","@sguernion"],
+    "requirements": ["aiohttp"],
+    "config_flow": true,
+    "issue_tracker": "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass/issues",
+    "documentation": "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass"
+}
