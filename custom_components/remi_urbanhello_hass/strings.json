@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Rémi UrbanHello authentication",
+        "description": "Enter your UrbanHello account credentials to connect your Rémi devices.",
+        "data": {
+          "username": "Email address",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Authentication failed. Please verify your credentials.",
+      "cannot_connect": "Cannot connect to the Rémi service. Please try again later.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This account is already configured."
+    }
+  }
+}

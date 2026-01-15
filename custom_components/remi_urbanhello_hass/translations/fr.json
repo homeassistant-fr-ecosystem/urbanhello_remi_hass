@@ -1,0 +1,89 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Authentification Rémi UrbanHello",
+        "description": "Entrez vos identifiants de compte UrbanHello pour connecter vos appareils Rémi.",
+        "data": {
+          "username": "Adresse email",
+          "password": "Mot de passe"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Échec de l'authentification. Veuillez vérifier vos identifiants.",
+      "cannot_connect": "Impossible de se connecter au service Rémi. Veuillez réessayer plus tard.",
+      "unknown": "Une erreur inattendue s'est produite."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "Température"
+      },
+      "face": {
+        "name": "Visage",
+        "state": {
+          "sleepyFace": "Endormi",
+          "awakeFace": "Éveillé",
+          "blankFace": "Vide",
+          "semiAwakeFace": "Semi-éveillé",
+          "smilyFace": "Souriant"
+        }
+      },
+      "raw_data": {
+        "name": "Données brutes"
+      },
+      "rssi": {
+        "name": "Puissance du signal (RSSI)"
+      }
+    },
+    "binary_sensor": {
+      "connectivity": {
+        "name": "Connectivité"
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Volume"
+      },
+      "night_light_level": {
+        "name": "Niveau de veilleuse"
+      },
+      "noise_threshold": {
+        "name": "Seuil de notification de bruit"
+      },
+      "night_face_level": {
+        "name": "Niveau du visage de nuit"
+      }
+    },
+    "select": {
+      "face": {
+        "name": "Visage",
+        "state": {
+          "sleepyFace": "Endormi",
+          "awakeFace": "Éveillé",
+          "blankFace": "Vide",
+          "semiAwakeFace": "Semi-éveillé",
+          "smilyFace": "Souriant"
+        }
+      }
+    },
+    "light": {
+      "remi": {
+        "name": "Veilleuse"
+      },
+      "night_light": {
+        "name": "Veilleuse"
+      }
+    },
+    "device_tracker": {
+      "remi": {
+        "name": "État réseau"
+      }
+    }
+  }
+}

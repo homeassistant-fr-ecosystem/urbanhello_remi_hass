@@ -1,0 +1,89 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Rémi UrbanHello authentication",
+        "description": "Enter your UrbanHello account credentials to connect your Rémi devices.",
+        "data": {
+          "username": "Email address",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Authentication failed. Please verify your credentials.",
+      "cannot_connect": "Cannot connect to the Rémi service. Please try again later.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This account is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "Temperature"
+      },
+      "face": {
+        "name": "Face",
+        "state": {
+          "sleepyFace": "Sleepy",
+          "awakeFace": "Awake",
+          "blankFace": "Blank",
+          "semiAwakeFace": "Semi-Awake",
+          "smilyFace": "Smiley"
+        }
+      },
+      "raw_data": {
+        "name": "Raw Data"
+      },
+      "rssi": {
+        "name": "Signal Strength (RSSI)"
+      }
+    },
+    "binary_sensor": {
+      "connectivity": {
+        "name": "Connectivity"
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Volume"
+      },
+      "night_light_level": {
+        "name": "Night Light Level"
+      },
+      "noise_threshold": {
+        "name": "Noise Notification Threshold"
+      },
+      "night_face_level": {
+        "name": "Night Face Level"
+      }
+    },
+    "select": {
+      "face": {
+        "name": "Face",
+        "state": {
+          "sleepyFace": "Sleepy",
+          "awakeFace": "Awake",
+          "blankFace": "Blank",
+          "semiAwakeFace": "Semi-Awake",
+          "smilyFace": "Smiley"
+        }
+      }
+    },
+    "light": {
+      "remi": {
+        "name": "Night Light"
+      },
+      "night_light": {
+        "name": "Night Light"
+      }
+    },
+    "device_tracker": {
+      "remi": {
+        "name": "Network Status"
+      }
+    }
+  }
+}
