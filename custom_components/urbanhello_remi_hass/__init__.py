@@ -1,5 +1,6 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+
 from .api import RemiAPI
 from .const import DOMAIN
 import logging
@@ -47,10 +48,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data[DOMAIN]["devices"] = devices
 
+    # Initialize alarm clock storage
+    if "alarm_times" not in hass.data[DOMAIN]:
+        hass.data[DOMAIN]["alarm_times"] = {}
+    if "alarm_states" not in hass.data[DOMAIN]:
+        hass.data[DOMAIN]["alarm_states"] = {}
+
     # Forward setup to all platforms
     await hass.config_entries.async_forward_entry_setups(
-        entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select"]
+        entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select", "time", "switch"]
     )
+
     return True
 
 
@@ -63,11 +71,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select"]
+        entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select", "time", "switch"]
     )
 
     if unload_ok:
         hass.data[DOMAIN].pop("api", None)
         hass.data[DOMAIN].pop("devices", None)
+        hass.data[DOMAIN].pop("alarm_times", None)
+        hass.data[DOMAIN].pop("alarm_states", None)
 
     return unload_ok

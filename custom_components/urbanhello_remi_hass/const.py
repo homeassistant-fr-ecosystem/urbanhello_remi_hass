@@ -13,6 +13,19 @@ FACE_TRANSLATION_KEYS = {
     "smilyFace": "smilyFace",
 }
 
+# Alarm clock constants
+MAX_ALARMS_PER_DEVICE = 3
+DEFAULT_ALARM_HOUR = 7
+DEFAULT_ALARM_MINUTE = 0
+DEFAULT_ALARM_VOLUME = 50
+DEFAULT_ALARM_FACE = "awakeFace"
+ALARM_SNOOZE_DURATION = 9  # minutes
+
+# Alarm clock service names
+SERVICE_TRIGGER_ALARM = "trigger_alarm"
+SERVICE_SNOOZE_ALARM = "snooze_alarm"
+SERVICE_STOP_ALARM = "stop_alarm"
+
 
 def get_device_info(domain, device_id, device_name, device_data=None):
     """Generate device info dictionary for Home Assistant."""

@@ -41,6 +41,8 @@ class RemiAPI:
         self.cache_duration = float(cache_duration)
         # Faces map name -> objectId
         self.faces: Dict[str, str] = {}
+        # Alarms cache keyed by remi objectId
+        self.alarms: Dict[str, List[Dict[str, Any]]] = {}
         self._session: Optional[aiohttp.ClientSession] = None
         self._request_timeout = request_timeout
 
@@ -309,10 +311,31 @@ class RemiAPI:
         The implementation sets a 'sound' field on the Remi object. If the
         server uses a different mechanism (cloud function, dedicated field)
         this method should be adapted.
+
+        Args:
+            object_id: The Remi device objectId
+            sound: Sound identifier to play
+            volume: Optional volume level (0-100) for this playback
+
+        Returns:
+            Result of the update operation
         """
         payload: Dict[str, Any] = {"sound": sound}
         if volume is not None:
             payload["volume"] = volume
+        return await self._update_remi(object_id, payload)
+
+    async def stop_sound(self, object_id: str) -> Any:
+        """Stop currently playing sound/alarm.
+
+        Args:
+            object_id: The Remi device objectId
+
+        Returns:
+            Result of the update operation
+        """
+        # Setting sound to empty/null should stop playback
+        payload: Dict[str, Any] = {"sound": ""}
         return await self._update_remi(object_id, payload)
 
     async def close(self) -> None:
@@ -320,3 +343,364 @@ class RemiAPI:
         if self._session and not self._session.closed:
             await self._session.close()
             self._session = None
+
+    # ========================================================================
+    # ALARM MANAGEMENT METHODS
+    # ========================================================================
+
+    async def get_alarms(self, object_id: str, refresh: bool = False) -> List[Dict[str, Any]]:
+        """Retrieve all alarms for a specific Remi device from Event class.
+
+        Args:
+            object_id: The Remi device objectId
+            refresh: Force refresh from server, bypass cache
+
+        Returns:
+            List of alarm dictionaries with normalized fields
+        """
+        if not refresh and object_id in self.alarms:
+            return self.alarms[object_id]
+
+        alarms: List[Dict[str, Any]] = []
+
+        # Try to get alarms from Event class (this is where Remi stores alarm clocks)
+        try:
+            where = {"remi": self._pointer("Remi", object_id)}
+            result = await self._request("GET", "/classes/Event", json={"where": where})
+            if isinstance(result, dict) and "results" in result:
+                events = result.get("results", [])
+                _LOGGER.info("Found %d events for Remi device %s", len(events), object_id)
+
+                # Convert Event objects to standardized alarm format
+                for event in events:
+                    alarm = self._convert_event_to_alarm(event, object_id)
+                    if alarm:
+                        alarms.append(alarm)
+
+                _LOGGER.info("Converted %d events to alarms for device %s", len(alarms), object_id)
+        except RemiAPIError as e:
+            _LOGGER.warning("Failed to get events from Event class: %s", e)
+
+        # Cache the results
+        self.alarms[object_id] = alarms
+        return alarms
+
+    def _convert_event_to_alarm(self, event: Dict[str, Any], device_id: str) -> Optional[Dict[str, Any]]:
+        """Convert an Event object to a standardized alarm format.
+
+        Args:
+            event: Event object from Parse
+            device_id: The Remi device objectId
+
+        Returns:
+            Standardized alarm dictionary or None if conversion fails
+        """
+        try:
+            # Extract time from event_time array [hour, minute]
+            event_time = event.get("event_time", [0, 0])
+            if len(event_time) >= 2:
+                hour = event_time[0]
+                minute = event_time[1]
+                time_str = f"{hour:02d}:{minute:02d}"
+            else:
+                time_str = "00:00"
+
+            # Convert recurrence array to day indices (0=Monday, 6=Sunday)
+            recurrence = event.get("recurrence", [0, 0, 0, 0, 0, 0, 0])
+            days = [i for i, enabled in enumerate(recurrence) if enabled]
+
+            # Create standardized alarm object
+            alarm = {
+                "objectId": event.get("objectId"),
+                "name": event.get("name", f"Event {time_str}"),
+                "time": time_str,
+                "enabled": event.get("enabled", False),
+                "days": days,  # List of day indices
+                "recurrence": recurrence,  # Original recurrence array
+                "event_time": event_time,  # Original event_time array
+                "cmd": event.get("cmd", 0),
+                "brightness": event.get("brightness", 100),
+                "volume": event.get("volume", 0),
+                "length_min": event.get("length_min", 0),
+                "remi": self._pointer("Remi", device_id),
+                "face": event.get("face", {}),
+                "lightnight": event.get("lightnight", [255, 255, 255])
+            }
+
+            return alarm
+        except Exception as e:
+            _LOGGER.error("Failed to convert event to alarm: %s", e)
+            return None
+
+    async def create_alarm(
+        self,
+        object_id: str,
+        time: str,
+        enabled: bool = True,
+        days: Optional[List[int]] = None,
+        sound: Optional[str] = None,
+        face: Optional[str] = None,
+        volume: Optional[int] = None,
+        label: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create a new alarm for a Remi device.
+
+        Args:
+            object_id: The Remi device objectId
+            time: Alarm time in format "HH:MM" (24-hour)
+            enabled: Whether the alarm is enabled
+            days: List of weekdays (0=Monday, 6=Sunday), None for daily
+            sound: Sound identifier to play
+            face: Face name to display when alarm triggers
+            volume: Volume level (0-100) for alarm
+            label: Human-readable label for the alarm
+
+        Returns:
+            The created alarm object
+        """
+        # Prepare the alarm payload
+        payload: Dict[str, Any] = {
+            "remi": self._pointer("Remi", object_id),
+            "time": time,
+            "enabled": enabled,
+        }
+
+        if days is not None:
+            payload["days"] = days
+        if sound is not None:
+            payload["sound"] = sound
+        if face is not None:
+            # Get face objectId
+            face_id = self.faces.get(face)
+            if not face_id:
+                await self.get_faces(refresh=True)
+                face_id = self.faces.get(face)
+            if face_id:
+                payload["face"] = self._pointer("Face", face_id)
+        if volume is not None:
+            payload["volume"] = volume
+        if label is not None:
+            payload["label"] = label
+
+        # Try to create via Alarm class
+        try:
+            result = await self._request("POST", "/classes/Alarm", json=payload)
+            # Invalidate cache
+            self.alarms.pop(object_id, None)
+            _LOGGER.debug("Created alarm for %s: %s", object_id, result)
+            return result
+        except RemiAPIError as e:
+            _LOGGER.debug("Could not create via Alarm class: %s", e)
+
+            # Fallback: Try Schedule class
+            try:
+                result = await self._request("POST", "/classes/Schedule", json=payload)
+                self.alarms.pop(object_id, None)
+                _LOGGER.debug("Created schedule for %s: %s", object_id, result)
+                return result
+            except RemiAPIError as e2:
+                _LOGGER.error("Could not create alarm/schedule: %s", e2)
+                raise RemiAPIError(f"Failed to create alarm: {e2}")
+
+    async def update_alarm(
+        self,
+        object_id: str,
+        alarm_id: str,
+        time: Optional[str] = None,
+        enabled: Optional[bool] = None,
+        days: Optional[List[int]] = None,
+        sound: Optional[str] = None,
+        face: Optional[str] = None,
+        volume: Optional[int] = None,
+        label: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Update an existing alarm.
+
+        Args:
+            object_id: The Remi device objectId
+            alarm_id: The alarm objectId to update
+            time: New alarm time in format "HH:MM"
+            enabled: Whether the alarm is enabled
+            days: List of weekdays (0=Monday, 6=Sunday)
+            sound: Sound identifier to play
+            face: Face name to display
+            volume: Volume level (0-100)
+            label: Human-readable label
+
+        Returns:
+            The updated alarm object
+        """
+        payload: Dict[str, Any] = {}
+
+        if time is not None:
+            payload["time"] = time
+        if enabled is not None:
+            payload["enabled"] = enabled
+        if days is not None:
+            payload["days"] = days
+        if sound is not None:
+            payload["sound"] = sound
+        if face is not None:
+            face_id = self.faces.get(face)
+            if not face_id:
+                await self.get_faces(refresh=True)
+                face_id = self.faces.get(face)
+            if face_id:
+                payload["face"] = self._pointer("Face", face_id)
+        if volume is not None:
+            payload["volume"] = volume
+        if label is not None:
+            payload["label"] = label
+
+        if not payload:
+            raise ValueError("No fields to update")
+
+        # Try Alarm class first
+        try:
+            result = await self._request("PUT", f"/classes/Alarm/{alarm_id}", json=payload)
+            self.alarms.pop(object_id, None)
+            _LOGGER.debug("Updated alarm %s: %s", alarm_id, result)
+            return result
+        except RemiAPIError as e:
+            _LOGGER.debug("Could not update via Alarm class: %s", e)
+
+            # Fallback to Schedule class
+            try:
+                result = await self._request("PUT", f"/classes/Schedule/{alarm_id}", json=payload)
+                self.alarms.pop(object_id, None)
+                _LOGGER.debug("Updated schedule %s: %s", alarm_id, result)
+                return result
+            except RemiAPIError as e2:
+                _LOGGER.error("Could not update alarm/schedule: %s", e2)
+                raise RemiAPIError(f"Failed to update alarm: {e2}")
+
+    async def delete_alarm(self, object_id: str, alarm_id: str) -> bool:
+        """Delete an alarm.
+
+        Args:
+            object_id: The Remi device objectId
+            alarm_id: The alarm objectId to delete
+
+        Returns:
+            True if deletion was successful
+        """
+        # Try Alarm class first
+        try:
+            await self._request("DELETE", f"/classes/Alarm/{alarm_id}")
+            self.alarms.pop(object_id, None)
+            _LOGGER.debug("Deleted alarm %s", alarm_id)
+            return True
+        except RemiAPIError as e:
+            _LOGGER.debug("Could not delete via Alarm class: %s", e)
+
+            # Fallback to Schedule class
+            try:
+                await self._request("DELETE", f"/classes/Schedule/{alarm_id}")
+                self.alarms.pop(object_id, None)
+                _LOGGER.debug("Deleted schedule %s", alarm_id)
+                return True
+            except RemiAPIError as e2:
+                _LOGGER.error("Could not delete alarm/schedule: %s", e2)
+                raise RemiAPIError(f"Failed to delete alarm: {e2}")
+
+    async def enable_alarm(self, object_id: str, alarm_id: str) -> Dict[str, Any]:
+        """Enable an alarm.
+
+        Args:
+            object_id: The Remi device objectId
+            alarm_id: The alarm objectId to enable
+
+        Returns:
+            The updated alarm object
+        """
+        return await self.update_alarm(object_id, alarm_id, enabled=True)
+
+    async def disable_alarm(self, object_id: str, alarm_id: str) -> Dict[str, Any]:
+        """Disable an alarm.
+
+        Args:
+            object_id: The Remi device objectId
+            alarm_id: The alarm objectId to disable
+
+        Returns:
+            The updated alarm object
+        """
+        return await self.update_alarm(object_id, alarm_id, enabled=False)
+
+    async def snooze_alarm(self, object_id: str, alarm_id: str, duration: int = 9) -> Dict[str, Any]:
+        """Snooze an alarm for a specified duration.
+
+        Args:
+            object_id: The Remi device objectId
+            alarm_id: The alarm objectId to snooze
+            duration: Snooze duration in minutes (default: 9)
+
+        Returns:
+            The updated alarm object or result
+        """
+        # Calculate new time based on current time + duration
+        from datetime import datetime, timedelta
+
+        now = datetime.now()
+        snooze_time = now + timedelta(minutes=duration)
+        new_time = snooze_time.strftime("%H:%M")
+
+        # Create a snooze flag or update the alarm
+        payload = {
+            "snoozed": True,
+            "snoozeUntil": snooze_time.isoformat(),
+        }
+
+        try:
+            result = await self._request("PUT", f"/classes/Alarm/{alarm_id}", json=payload)
+            self.alarms.pop(object_id, None)
+            _LOGGER.debug("Snoozed alarm %s for %d minutes", alarm_id, duration)
+            return result
+        except RemiAPIError as e:
+            _LOGGER.debug("Could not snooze via standard method: %s", e)
+            # Fallback: just disable and re-enable later
+            raise RemiAPIError(f"Snooze not supported by API: {e}")
+
+    async def trigger_alarm(self, object_id: str, alarm_id: str) -> Dict[str, Any]:
+        """Manually trigger an alarm (for testing).
+
+        Args:
+            object_id: The Remi device objectId
+            alarm_id: The alarm objectId to trigger
+
+        Returns:
+            Result of the trigger action
+        """
+        # Get alarm details
+        alarms = await self.get_alarms(object_id, refresh=True)
+        alarm = next((a for a in alarms if a.get("objectId") == alarm_id), None)
+
+        if not alarm:
+            raise RemiAPIError(f"Alarm {alarm_id} not found")
+
+        # Apply alarm settings to the device
+        actions = []
+
+        # Set face if specified
+        if "face" in alarm:
+            face_id = alarm["face"].get("objectId") if isinstance(alarm["face"], dict) else alarm["face"]
+            if face_id:
+                # Find face name
+                face_name = None
+                for name, fid in self.faces.items():
+                    if fid == face_id:
+                        face_name = name
+                        break
+                if face_name:
+                    await self.set_face_by_name(object_id, face_name)
+
+        # Set volume if specified
+        if "volume" in alarm:
+            await self.set_volume(object_id, alarm["volume"])
+
+        # Play sound if specified
+        if "sound" in alarm:
+            await self.play_media(object_id, alarm["sound"])
+
+        _LOGGER.debug("Manually triggered alarm %s", alarm_id)
+        return {"triggered": True, "alarm_id": alarm_id}
