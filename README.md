@@ -54,20 +54,20 @@ For each Rémi device, the following entities are created:
 ### HACS (Recommended)
 
 Click here to install via HACS:
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=pdruart&repository=Remi_UrbanHello_hass&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=homeassistant-fr-ecosystem&repository=urbanhello_remi_hass&category=integration)
 
 Or manually:
 1. Open HACS in your Home Assistant instance
 2. Go to "Integrations"
 3. Click the three dots in the top right corner
 4. Select "Custom repositories"
-5. Add `https://github.com/pdruart/Remi_UrbanHello_hass` as an integration
+5. Add `https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass` as an integration
 6. Click "Install"
 7. Restart Home Assistant
 
 ### Manual Installation
 
-1. Copy the `custom_components/remi_urbanhello_hass` folder to your Home Assistant `config/custom_components/` directory
+1. Copy the `custom_components/urbanhello_remi_hass` folder to your Home Assistant `config/custom_components/` directory
 2. Restart Home Assistant
 
 ## Configuration
@@ -193,7 +193,7 @@ The integration supports multiple languages with translated entity names and fac
 - **French** (fr)
 
 To add additional languages:
-1. Copy [custom_components/remi_urbanhello_hass/translations/en.json](custom_components/remi_urbanhello_hass/translations/en.json)
+1. Copy [custom_components/urbanhello_remi_hass/translations/en.json](custom_components/urbanhello_remi_hass/translations/en.json)
 2. Create a new file with your language code (e.g., `de.json` for German)
 3. Translate the values while keeping the keys unchanged
 4. Submit a pull request to add it to the integration
@@ -220,13 +220,19 @@ Add to your `configuration.yaml`:
 logger:
   default: info
   logs:
-    custom_components.remi_urbanhello_hass: debug
+    custom_components.urbanhello_remi_hass: debug
 ```
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/pdruart/Remi_UrbanHello_hass/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/pdruart/Remi_UrbanHello_hass/discussions)## Disclaimer
+- **Issues**: [GitHub Issues](https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass/discussions)
+
+## Credit
+
+This integration is forked from the original project by [@pdruart](https://github.com/pdruart):
+[Remi_UrbanHello_hass](https://github.com/pdruart/Remi_UrbanHello_hass)
+
 ## License
 
 This project is not affiliated with, endorsed by, or connected to UrbanHello in any way.
