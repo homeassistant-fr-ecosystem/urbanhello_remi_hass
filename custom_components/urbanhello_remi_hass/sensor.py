@@ -22,6 +22,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         sensors.append(RemiRawDataSensor(api, device))
         # Diagnostic sensors
         sensors.append(RemiRssiSensor(api, device))
+        sensors.append(RemiAlarmDataSensor(api, device))
 
     async_add_entities(sensors, update_before_add=True)
 
@@ -206,6 +207,117 @@ class RemiRawDataSensor(Entity):
         except Exception as e:
             _LOGGER.error("Failed to update raw data for %s: %s", self._name, e)
             self._raw_data = {}
+
+
+class RemiAlarmDataSensor(Entity):
+    """Representation of a Rémi alarm data sensor with all alarm API fields."""
+
+    _attr_translation_key = "alarm_data"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, api, device):
+        self._api = api
+        self._device = device
+        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Alarm Data"
+        self._id = device["objectId"]
+        self._alarm_data = []
+        self._last_error = None
+        self._last_update_time = None
+
+    @property
+    def device_info(self):
+        """Return device information to link the entity to the integration."""
+        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for the sensor."""
+        return f"{self._id}_alarm_data"
+
+    @property
+    def state(self):
+        """Return the number of alarms found."""
+        if self._last_error:
+            return "error"
+        return len(self._alarm_data) if self._alarm_data else 0
+
+    @property
+    def extra_state_attributes(self):
+        """Return all alarm data as attributes."""
+        attributes = {
+            "device_id": self._id,
+            "last_update": self._last_update_time,
+        }
+
+        # Add error information if present
+        if self._last_error:
+            attributes["error"] = str(self._last_error)
+            attributes["status"] = "error"
+        elif not self._alarm_data:
+            attributes["status"] = "no_alarms_found"
+            attributes["info"] = "API returned empty list - alarms may not be configured in Remi app or Parse server"
+        else:
+            attributes["status"] = "ok"
+
+        # Create attributes for each alarm
+        if self._alarm_data:
+            for idx, alarm in enumerate(self._alarm_data, start=1):
+                alarm_key = f"alarm_{idx}"
+                attributes[alarm_key] = alarm
+
+            # Also include raw list
+            attributes["raw_alarms"] = self._alarm_data
+
+        return attributes
+
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        if self._last_error:
+            return "mdi:alarm-off"
+        elif not self._alarm_data:
+            return "mdi:alarm-plus"
+        return "mdi:alarm-multiple"
+
+    async def async_update(self):
+        """Fetch the latest alarm data from the API."""
+        from datetime import datetime
+
+        try:
+            _LOGGER.info("Fetching alarm data for device %s (%s)", self._name, self._id)
+            alarms = await self._api.get_alarms(self._id, refresh=True)
+
+            self._alarm_data = alarms if alarms else []
+            self._last_error = None
+            self._last_update_time = datetime.now().isoformat()
+
+            if self._alarm_data:
+                _LOGGER.info("Found %d alarms for %s: %s", len(self._alarm_data), self._name, self._alarm_data)
+            else:
+                _LOGGER.warning("No alarms found for %s - API returned empty list", self._name)
+                # Also check what fields are available in the raw data
+                try:
+                    remi_info = await self._api.get_remi_info(self._id, refresh=True)
+                    raw = remi_info.get("raw", {})
+                    alarm_related_fields = [k for k in raw.keys() if "alarm" in k.lower() or "schedule" in k.lower() or "bedtime" in k.lower()]
+                    if alarm_related_fields:
+                        _LOGGER.warning("Found alarm-related fields in raw data: %s", alarm_related_fields)
+                        for field in alarm_related_fields:
+                            _LOGGER.warning("Field '%s' contains: %s", field, raw.get(field))
+                    else:
+                        _LOGGER.warning("No alarm-related fields found in raw Remi data. Available fields: %s", list(raw.keys()))
+                except Exception as debug_e:
+                    _LOGGER.debug("Could not check raw data for alarm fields: %s", debug_e)
+
+        except Exception as e:
+            _LOGGER.error("Failed to update alarm data for %s: %s", self._name, e, exc_info=True)
+            self._last_error = str(e)
+            self._alarm_data = []
 
 
 class RemiRssiSensor(Entity):
