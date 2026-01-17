@@ -9,13 +9,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, get_device_info
+from .const import DOMAIN, BRAND_NAME, get_device_info
 
 _LOGGER = logging.getLogger(__name__)
-
-# Number of alarm clocks per device
-MAX_ALARMS = 10
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -31,17 +27,29 @@ async def async_setup_entry(
         device_id = device["objectId"]
         device_name = device.get("name", "Rémi")
 
-        # Create alarm clock enable/disable switches
-        for alarm_num in range(1, MAX_ALARMS + 1):
-            entities.append(
-                RemiAlarmSwitch(
-                    api=api,
-                    device_id=device_id,
-                    device_name=device_name,
-                    device_data=device,
-                    alarm_number=alarm_num,
-                )
-            )
+        alarms = await api.get_alarms(device_id, refresh=True)
+        _LOGGER.info(
+                "Found %d alarms for device %s (%s)",
+                len(alarms) if alarms else 0,
+                device_name,
+                device_id,
+        )
+
+        # Create switch entities only for alarms that exist
+        if alarms:
+            for alarm in alarms:
+                alarm_object_id = alarm.get("objectId")
+
+                if alarm_object_id:
+                    entities.append(
+                        RemiAlarmSwitch(
+                            api=api,
+                            device_id=device_id,
+                            device_name=device_name,
+                            device_data=device,
+                            alarm_data=alarm,
+                        )
+                    )
 
     async_add_entities(entities)
 
@@ -55,91 +63,57 @@ class RemiAlarmSwitch(SwitchEntity):
         device_id: str,
         device_name: str,
         device_data: dict,
-        alarm_number: int,
+        alarm_data: dict,
     ) -> None:
         """Initialize the alarm clock switch entity."""
         self._api = api
         self._device_id = device_id
         self._device_name = device_name
         self._device_data = device_data
-        self._alarm_number = alarm_number
-        self._attr_name = f"{device_name} Alarm {alarm_number}"
-        self._attr_unique_id = f"{device_id}_alarm_{alarm_number}_enabled"
         self._attr_is_on = False
 
         # Additional alarm attributes
-        self._alarm_name = None
-        self._alarm_time = None
-        self._brightness = None
-        self._volume = None
-        self._face = None
-        self._lightnight = None
-        self._alarm_object_id = None
-        self._days = None
-        self._recurrence = None
+        self._alarm_object_id = alarm_data.get("objectId")
+        self._alarm_name = alarm_data.get("name", "Alarm")
+        self._brightness = alarm_data.get("brightness")
+        self._volume = alarm_data.get("volume")
+        self._lightnight = alarm_data.get("lightnight")
+        self._days = alarm_data.get("days", [])
+        self._recurrence = alarm_data.get("recurrence", [])
+        # Resolve face name from face pointer
+        face_obj = alarm_data.get("face")
+        if isinstance(face_obj, dict) and face_obj.get("objectId"):
+            face_id = face_obj.get("objectId")
+            # Look up face name from API faces cache
+            face_name = None
+            for name, fid in self._api.faces.items():
+                if fid == face_id:
+                    face_name = name
+                    break
+                self._face = face_name
+        else:
+            self._face = None
+
+        # Set entity attributes with correct objectId-based unique_id
+        self._attr_name = f"{device_name} {self._alarm_name}"
+        self._attr_unique_id = f"{BRAND_NAME}_{device_id}_alarm_{self._alarm_object_id}"
+        if "enabled" in alarm_data:
+            self._attr_is_on = bool(alarm_data.get("enabled"))
+            _LOGGER.info(
+                "Initialized alarm (%s) state from API: %s for device %s",
+                self._alarm_name,
+                "enabled" if self._attr_is_on else "disabled",
+                self._device_id,
+            )
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass - initialize from API or use defaults."""
         await super().async_added_to_hass()
 
-        # Try to load alarm from Remi API
-        try:
-            alarms = await self._api.get_alarms(self._device_id, refresh=True)
-            if alarms and len(alarms) >= self._alarm_number:
-                # Get the alarm for this number (1-indexed)
-                alarm = alarms[self._alarm_number - 1]
-
-                # Store all alarm attributes
-                self._alarm_object_id = alarm.get("objectId")
-                self._alarm_name = alarm.get("name", "")
-                self._alarm_time = alarm.get("time")
-                self._brightness = alarm.get("brightness")
-                self._volume = alarm.get("volume")
-                self._lightnight = alarm.get("lightnight")
-                self._days = alarm.get("days", [])
-                self._recurrence = alarm.get("recurrence", [])
-
-                # Resolve face name from face pointer
-                face_obj = alarm.get("face")
-                if isinstance(face_obj, dict) and face_obj.get("objectId"):
-                    face_id = face_obj.get("objectId")
-                    # Look up face name from API faces cache
-                    face_name = None
-                    for name, fid in self._api.faces.items():
-                        if fid == face_id:
-                            face_name = name
-                            break
-                    self._face = face_name
-                else:
-                    self._face = None
-
-                # Update entity name and unique_id with alarm name and objectId
-                if self._alarm_name:
-                    self._attr_name = f"{self._device_name} {self._alarm_name}"
-                if self._alarm_object_id:
-                    self._attr_unique_id = f"{self._device_id}_alarm_{self._alarm_object_id}_enabled"
-
-                if "enabled" in alarm:
-                    self._attr_is_on = bool(alarm["enabled"])
-                    _LOGGER.info(
-                        "Initialized alarm %d (%s) state from API: %s for device %s",
-                        self._alarm_number,
-                        self._alarm_name,
-                        "enabled" if self._attr_is_on else "disabled",
-                        self._device_id,
-                    )
-                    return  # Successfully loaded from API, done
-        except Exception as e:
-            _LOGGER.debug(
-                "Could not load alarm %d from API (may not exist): %s",
-                self._alarm_number,
-                e,
-            )
-
         # Use default state (disabled)
         _LOGGER.debug(
-            "Using default state (disabled) for alarm %d on device %s",
-            self._alarm_number,
+            "Using default state (disabled) for alarm %s on device %s",
+            self._alarm_name,
             self._device_id,
         )
 
@@ -199,18 +173,13 @@ class RemiAlarmSwitch(SwitchEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes for the alarm."""
-        attributes = {
-            "alarm_number": self._alarm_number,
-        }
+        attributes = {}
 
         if self._alarm_name is not None:
             attributes["name"] = self._alarm_name
 
         if self._alarm_object_id is not None:
             attributes["alarm_id"] = self._alarm_object_id
-
-        if self._alarm_time is not None:
-            attributes["time"] = self._alarm_time
 
         if self._brightness is not None:
             attributes["brightness"] = self._brightness

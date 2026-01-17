@@ -10,12 +10,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, get_device_info
+from .const import DOMAIN,BRAND_NAME, get_device_info
 
 _LOGGER = logging.getLogger(__name__)
-
-# Number of alarm clocks per device
-MAX_ALARMS = 10
 
 
 async def async_setup_entry(
@@ -32,16 +29,49 @@ async def async_setup_entry(
         device_id = device["objectId"]
         device_name = device.get("name", "Rémi")
 
-        # Create multiple alarm clock time entities per device
-        for alarm_num in range(1, MAX_ALARMS + 1):
-            entities.append(
-                RemiAlarmTime(
-                    api=api,
-                    device_id=device_id,
-                    device_name=device_name,
-                    device_data=device,
-                    alarm_number=alarm_num,
+        # Fetch alarms from API first to get actual objectIds
+        try:
+            alarms = await api.get_alarms(device_id, refresh=True)
+            _LOGGER.info(
+                "Found %d alarms for device %s (%s)",
+                len(alarms) if alarms else 0,
+                device_name,
+                device_id,
+            )
+
+            # Create time entities only for alarms that exist
+            if alarms:
+                for alarm in alarms:
+                    alarm_object_id = alarm.get("objectId")
+
+                    if alarm_object_id:
+                        entities.append(
+                            RemiAlarmTime(
+                                api=api,
+                                device_id=device_id,
+                                device_name=device_name,
+                                device_data=device,
+                                alarm_data=alarm,
+                            )
+                        )
+                    else:
+                        _LOGGER.warning(
+                            "Skipping alarm without objectId for device %s: %s",
+                            device_id,
+                            alarm,
+                        )
+            else:
+                _LOGGER.info(
+                    "No alarms found for device %s (%s)",
+                    device_name,
+                    device_id,
                 )
+        except Exception as e:
+            _LOGGER.error(
+                "Failed to fetch alarms for device %s (%s): %s",
+                device_name,
+                device_id,
+                e,
             )
 
     async_add_entities(entities)
@@ -56,98 +86,69 @@ class RemiAlarmTime(TimeEntity):
         device_id: str,
         device_name: str,
         device_data: dict,
-        alarm_number: int,
+        alarm_data: dict,
     ) -> None:
         """Initialize the alarm clock time entity."""
         self._api = api
         self._device_id = device_id
         self._device_name = device_name
         self._device_data = device_data
-        self._alarm_number = alarm_number
-        self._attr_name = f"{device_name} Alarm {alarm_number} Time"
-        self._attr_unique_id = f"{device_id}_alarm_{alarm_number}_time"
 
-        # Default to 7:00 AM
-        self._attr_native_value = time(7, 0)
+        # Extract alarm data
+        self._alarm_object_id = alarm_data.get("objectId")
+        self._alarm_name = alarm_data.get("name", "Alarm")
+        self._brightness = alarm_data.get("brightness")
+        self._volume = alarm_data.get("volume")
+        self._lightnight = alarm_data.get("lightnight")
+        self._days = alarm_data.get("days", [])
+        self._recurrence = alarm_data.get("recurrence", [])
 
-        # Additional alarm attributes
-        self._alarm_name = None
-        self._brightness = None
-        self._volume = None
-        self._face = None
-        self._lightnight = None
-        self._alarm_object_id = None
-        self._days = None
-        self._recurrence = None
+        # Resolve face name from face pointer
+        face_obj = alarm_data.get("face")
+        if isinstance(face_obj, dict) and face_obj.get("objectId"):
+            face_id = face_obj.get("objectId")
+            # Look up face name from API faces cache
+            face_name = None
+            for name, fid in self._api.faces.items():
+                if fid == face_id:
+                    face_name = name
+                    break
+            self._face = face_name
+        else:
+            self._face = None
+
+        # Set entity attributes with correct objectId-based unique_id
+        self._attr_name = f"{device_name} {self._alarm_name}"
+        self._attr_unique_id = f"{BRAND_NAME}_{device_id}_alarm_{self._alarm_object_id}"
+
+        # Parse time from alarm data
+        if "time" in alarm_data:
+            time_str = alarm_data["time"]
+            time_parts = time_str.split(":")
+            if len(time_parts) >= 2:
+                try:
+                    hour = int(time_parts[0])
+                    minute = int(time_parts[1])
+                    self._attr_native_value = time(hour, minute)
+                except (ValueError, IndexError):
+                    # Default to 7:00 AM if parsing fails
+                    self._attr_native_value = time(7, 0)
+            else:
+                self._attr_native_value = time(7, 0)
+        else:
+            # Default to 7:00 AM
+            self._attr_native_value = time(7, 0)
 
     async def async_added_to_hass(self) -> None:
-        """Run when entity is added to hass - initialize from API or use defaults."""
+        """Run when entity is added to hass."""
         await super().async_added_to_hass()
 
-        # Try to load alarm from Remi API
-        try:
-            alarms = await self._api.get_alarms(self._device_id, refresh=True)
-            if alarms and len(alarms) >= self._alarm_number:
-                # Get the alarm for this number (1-indexed)
-                alarm = alarms[self._alarm_number - 1]
-
-                # Store all alarm attributes
-                self._alarm_object_id = alarm.get("objectId")
-                self._alarm_name = alarm.get("name", "")
-                self._brightness = alarm.get("brightness")
-                self._volume = alarm.get("volume")
-                self._lightnight = alarm.get("lightnight")
-                self._days = alarm.get("days", [])
-                self._recurrence = alarm.get("recurrence", [])
-
-                # Resolve face name from face pointer
-                face_obj = alarm.get("face")
-                if isinstance(face_obj, dict) and face_obj.get("objectId"):
-                    face_id = face_obj.get("objectId")
-                    # Look up face name from API faces cache
-                    face_name = None
-                    for name, fid in self._api.faces.items():
-                        if fid == face_id:
-                            face_name = name
-                            break
-                    self._face = face_name
-                else:
-                    self._face = None
-
-                # Update entity name and unique_id with alarm name and objectId
-                if self._alarm_name:
-                    self._attr_name = f"{self._device_name} {self._alarm_name} Time"
-                if self._alarm_object_id:
-                    self._attr_unique_id = f"{self._device_id}_alarm_{self._alarm_object_id}_time"
-
-                if "time" in alarm:
-                    # Parse time from API (format might be "HH:MM" or other)
-                    time_str = alarm["time"]
-                    time_parts = time_str.split(":")
-                    if len(time_parts) >= 2:
-                        hour = int(time_parts[0])
-                        minute = int(time_parts[1])
-                        self._attr_native_value = time(hour, minute)
-                        _LOGGER.info(
-                            "Initialized alarm %d (%s) time from API: %s for device %s",
-                            self._alarm_number,
-                            self._alarm_name,
-                            time_str,
-                            self._device_id,
-                        )
-                        return  # Successfully loaded from API, done
-        except Exception as e:
-            _LOGGER.debug(
-                "Could not load alarm %d from API (may not exist): %s",
-                self._alarm_number,
-                e,
-            )
-
-        # Use default time (7:00 AM)
-        _LOGGER.debug(
-            "Using default time 07:00 for alarm %d on device %s",
-            self._alarm_number,
+        _LOGGER.info(
+            "Initialized alarm time '%s' (objectId: %s) for device %s - Time: %s",
+            self._alarm_name,
+            self._alarm_object_id,
             self._device_id,
+            self._attr_native_value.strftime("%H:%M") if self._attr_native_value else "N/A",
         )
 
     @property
@@ -164,15 +165,16 @@ class RemiAlarmTime(TimeEntity):
         """Set the alarm time."""
         self._attr_native_value = value
 
-        # Store in hass.data for persistence
-        alarm_key = f"alarm_{self._alarm_number}_time"
+        # Store in hass.data for persistence using alarm objectId
+        alarm_key = f"alarm_{self._alarm_object_id}"
         if self._device_id not in self.hass.data[DOMAIN]["alarm_times"]:
             self.hass.data[DOMAIN]["alarm_times"][self._device_id] = {}
         self.hass.data[DOMAIN]["alarm_times"][self._device_id][alarm_key] = value
 
-        _LOGGER.debug(
-            "Set alarm %d time to %s for device %s",
-            self._alarm_number,
+        _LOGGER.info(
+            "Set alarm '%s' (objectId: %s) time to %s for device %s",
+            self._alarm_name,
+            self._alarm_object_id,
             value.strftime("%H:%M"),
             self._device_id,
         )
@@ -187,9 +189,7 @@ class RemiAlarmTime(TimeEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes for the alarm."""
-        attributes = {
-            "alarm_number": self._alarm_number,
-        }
+        attributes = {}
 
         if self._alarm_name is not None:
             attributes["name"] = self._alarm_name
