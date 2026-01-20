@@ -39,6 +39,9 @@
       },
       "rssi": {
         "name": "Puissance du signal (RSSI)"
+      },
+      "alarm_data": {
+        "name": "Données des réveils"
       }
     },
     "binary_sensor": {
@@ -83,6 +86,16 @@
     "device_tracker": {
       "remi": {
         "name": "État réseau"
+      }
+    },
+    "time": {
+      "alarm_time": {
+        "name": "Heure du réveil {alarm_number}"
+      }
+    },
+    "switch": {
+      "alarm": {
+        "name": "Réveil {alarm_number}"
       }
     }
   }

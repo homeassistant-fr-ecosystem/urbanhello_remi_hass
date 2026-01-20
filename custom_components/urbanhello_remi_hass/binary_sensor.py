@@ -1,28 +1,35 @@
-from datetime import timedelta
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
-from .const import DOMAIN, BRAND_NAME, MANUFACTURER, MODEL, get_device_info
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from .const import DOMAIN, BRAND_NAME, get_device_info
+from .coordinator import RemiCoordinator
 import logging
 
 _LOGGER = logging.getLogger(__name__)
-
-# Define update interval (1 minute)
-SCAN_INTERVAL = timedelta(minutes=1)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up binary sensors for Rémi devices."""
     api = hass.data[DOMAIN]["api"]
     devices = hass.data[DOMAIN]["devices"]
+    coordinators = hass.data[DOMAIN]["coordinators"]
 
     binary_sensors = []
     for device in devices:
-        binary_sensors.append(RemiConnectivityBinarySensor(api, device))
+        device_id = device["objectId"]
+        device_name = device.get("name", "Rémi")
+        coordinator = coordinators.get(device_id)
 
-    async_add_entities(binary_sensors, update_before_add=True)
+        if not coordinator:
+            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            continue
+
+        binary_sensors.append(RemiConnectivityBinarySensor(coordinator, api, device))
+
+    async_add_entities(binary_sensors)
 
 
-class RemiConnectivityBinarySensor(BinarySensorEntity):
+class RemiConnectivityBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Representation of a Rémi connectivity binary sensor."""
 
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
@@ -30,51 +37,40 @@ class RemiConnectivityBinarySensor(BinarySensorEntity):
     _attr_entity_registry_enabled_default = False
     _attr_translation_key = "connectivity"
 
-    def __init__(self, api, device):
+    def __init__(self, coordinator: RemiCoordinator, api, device):
+        """Initialize the connectivity binary sensor."""
+        super().__init__(coordinator)
         self._api = api
         self._device = device
-        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Connectivity"
-        self._id = device["objectId"]
-        self._is_on = None
+        self._device_name = device.get("name", "Rémi")
+        self._device_id = device["objectId"]
+
+        self._attr_name = f"{BRAND_NAME} {self._device_name} Connectivity"
+        self._attr_unique_id = f"{self._device_id}_connectivity"
 
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
-
-    @property
-    def name(self):
-        """Return the name of the binary sensor."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID for the binary sensor."""
-        return f"{self._id}_connectivity"
+        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def is_on(self):
         """Return true if the device is connected."""
-        return self._is_on if self._is_on is not None else False
+        if self.coordinator.data and "device_info" in self.coordinator.data:
+            device_info = self.coordinator.data["device_info"]
+            raw = device_info.get("raw", {})
+            online = raw.get("online")
+            return online if online is not None else False
+        return False
 
     @property
     def available(self):
         """Return True if entity is available."""
-        return self._is_on is not None
+        return self.coordinator.last_update_success
 
     @property
     def extra_state_attributes(self):
         """Return additional attributes."""
         return {
-            "online": self._is_on,
+            "online": self.is_on,
         }
-
-    async def async_update(self):
-        """Fetch the latest connectivity status from the API."""
-        try:
-            info = await self._api.get_remi_info(self._id)
-            raw = info.get("raw", {})
-            self._is_on = raw.get("online")
-        except Exception as e:
-            _LOGGER.error("Failed to update connectivity for %s: %s", self._name, e)
-            self._is_on = None
