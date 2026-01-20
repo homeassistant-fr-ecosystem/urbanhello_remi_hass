@@ -1,19 +1,24 @@
+from __future__ import annotations
+
+import logging
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .api import RemiAPI
 from .const import DOMAIN
-import logging
+from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the Remi integration."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
     return True
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Rémi from a config entry."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
@@ -54,6 +59,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if "alarm_states" not in hass.data[DOMAIN]:
         hass.data[DOMAIN]["alarm_states"] = {}
 
+    # Initialize coordinators for each device
+    coordinators = {}
+    for device in devices:
+        device_id = device["objectId"]
+        device_name = device.get("name", "Rémi")
+
+        coordinator = RemiCoordinator(hass, api, device_id, device_name)
+        # Perform initial refresh
+        await coordinator.async_config_entry_first_refresh()
+        coordinators[device_id] = coordinator
+
+    hass.data[DOMAIN]["coordinators"] = coordinators
+
     # Forward setup to all platforms
     await hass.config_entries.async_forward_entry_setups(
         entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select", "time", "switch"]
@@ -62,12 +80,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Close the API session
-    if DOMAIN in hass.data and "api" in hass.data[DOMAIN]:
-        api = hass.data[DOMAIN]["api"]
-        await api.close()
+    # Stop all coordinators before unloading
+    if DOMAIN in hass.data and "coordinators" in hass.data[DOMAIN]:
+        coordinators = hass.data[DOMAIN]["coordinators"]
+        for coordinator in coordinators.values():
+            # Stop the coordinator's refresh timer
+            coordinator._unsub_refresh()
 
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(
@@ -75,9 +95,22 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
 
     if unload_ok:
+        # Close the API session
+        if DOMAIN in hass.data and "api" in hass.data[DOMAIN]:
+            api = hass.data[DOMAIN]["api"]
+            await api.close()
+
+        # Clean up stored data
         hass.data[DOMAIN].pop("api", None)
         hass.data[DOMAIN].pop("devices", None)
         hass.data[DOMAIN].pop("alarm_times", None)
         hass.data[DOMAIN].pop("alarm_states", None)
+        hass.data[DOMAIN].pop("coordinators", None)
 
     return unload_ok
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)

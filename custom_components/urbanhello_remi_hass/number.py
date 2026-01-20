@@ -1,72 +1,77 @@
-from datetime import timedelta
 from homeassistant.components.number import NumberEntity, NumberMode
-from .const import DOMAIN, BRAND_NAME, MANUFACTURER, MODEL, get_device_info
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from .const import DOMAIN, BRAND_NAME, get_device_info
+from .coordinator import RemiCoordinator
 import logging
 
 _LOGGER = logging.getLogger(__name__)
-
-# Define update interval (1 minute)
-SCAN_INTERVAL = timedelta(minutes=1)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up number entities for Rémi devices."""
     api = hass.data[DOMAIN]["api"]
     devices = hass.data[DOMAIN]["devices"]
+    coordinators = hass.data[DOMAIN]["coordinators"]
 
     numbers = []
     for device in devices:
-        numbers.append(RemiVolumeNumber(api, device))
-        numbers.append(RemiNoiseThresholdNumber(api, device))
-        numbers.append(RemiNightFaceLevel(api, device))
+        device_id = device["objectId"]
+        device_name = device.get("name", "Rémi")
+        coordinator = coordinators.get(device_id)
 
-    async_add_entities(numbers, update_before_add=True)
+        if not coordinator:
+            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            continue
+
+        numbers.append(RemiVolumeNumber(coordinator, api, device))
+        numbers.append(RemiNoiseThresholdNumber(coordinator, api, device))
+        numbers.append(RemiNightFaceLevel(coordinator, api, device))
+
+    async_add_entities(numbers)
 
 
-class RemiVolumeNumber(NumberEntity):
+class RemiVolumeNumber(CoordinatorEntity, NumberEntity):
     """Representation of a Rémi volume control."""
 
     _attr_translation_key = "volume"
+    _attr_native_min_value = 0
+    _attr_native_max_value = 100
+    _attr_native_step = 1
+    _attr_mode = NumberMode.SLIDER
 
-    def __init__(self, api, device):
+    def __init__(self, coordinator: RemiCoordinator, api, device):
+        """Initialize the volume number entity."""
+        super().__init__(coordinator)
         self._api = api
         self._device = device
-        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Volume"
-        self._id = device["objectId"]
-        self._volume = device.get("volume", 0)
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 100
-        self._attr_native_step = 1
-        self._attr_mode = NumberMode.SLIDER
+        self._device_name = device.get("name", "Rémi")
+        self._device_id = device["objectId"]
+
+        self._attr_name = f"{BRAND_NAME} {self._device_name} Volume"
+        self._attr_unique_id = f"{self._device_id}_volume_control"
 
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
-
-    @property
-    def name(self):
-        """Return the name of the number entity."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID for the number entity."""
-        return f"{self._id}_volume_control"
+        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
         """Return the current volume level."""
-        return self._volume
+        if self.coordinator.data and "device_info" in self.coordinator.data:
+            device_info = self.coordinator.data["device_info"]
+            return device_info.get("volume")
+        return None
 
     @property
     def icon(self):
         """Return the icon to use in the frontend."""
-        if self._volume == 0:
+        volume = self.native_value or 0
+        if volume == 0:
             return "mdi:volume-off"
-        elif self._volume < 33:
+        elif volume < 33:
             return "mdi:volume-low"
-        elif self._volume < 66:
+        elif volume < 66:
             return "mdi:volume-medium"
         else:
             return "mdi:volume-high"
@@ -75,65 +80,60 @@ class RemiVolumeNumber(NumberEntity):
         """Set the volume level."""
         try:
             volume_int = int(value)
-            await self._api.set_volume(self._id, volume_int)
-            self._volume = volume_int
-            _LOGGER.debug("Set volume to %d for %s", volume_int, self._name)
+            await self._api.set_volume(self._device_id, volume_int)
+            _LOGGER.debug("Set volume to %d for %s", volume_int, self._attr_name)
+
+            # Request immediate refresh from coordinator
+            await self.coordinator.async_request_refresh()
+
         except Exception as e:
-            _LOGGER.error("Failed to set volume for %s: %s", self._name, e)
-
-    async def async_update(self):
-        """Fetch the latest volume from the API."""
-        try:
-            info = await self._api.get_remi_info(self._id)
-            self._volume = info.get("volume", self._volume)
-        except Exception as e:
-            _LOGGER.error("Failed to update volume for %s: %s", self._name, e)
+            _LOGGER.error("Failed to set volume for %s: %s", self._attr_name, e)
+            raise
 
 
-class RemiNoiseThresholdNumber(NumberEntity):
+class RemiNoiseThresholdNumber(CoordinatorEntity, NumberEntity):
     """Representation of a Rémi noise notification threshold control."""
 
     _attr_translation_key = "noise_threshold"
+    _attr_native_min_value = 0
+    _attr_native_max_value = 100
+    _attr_native_step = 1
+    _attr_mode = NumberMode.SLIDER
 
-    def __init__(self, api, device):
+    def __init__(self, coordinator: RemiCoordinator, api, device):
+        """Initialize the noise threshold number entity."""
+        super().__init__(coordinator)
         self._api = api
         self._device = device
-        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Noise Threshold"
-        self._id = device["objectId"]
-        self._threshold = device.get("noise_notification_threshold", 0)
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 100
-        self._attr_native_step = 1
-        self._attr_mode = NumberMode.SLIDER
+        self._device_name = device.get("name", "Rémi")
+        self._device_id = device["objectId"]
+
+        self._attr_name = f"{BRAND_NAME} {self._device_name} Noise Threshold"
+        self._attr_unique_id = f"{self._device_id}_noise_threshold"
 
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
-
-    @property
-    def name(self):
-        """Return the name of the number entity."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID for the number entity."""
-        return f"{self._id}_noise_threshold"
+        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
         """Return the current noise threshold level."""
-        return self._threshold
+        if self.coordinator.data and "device_info" in self.coordinator.data:
+            device_info = self.coordinator.data["device_info"]
+            raw = device_info.get("raw", {})
+            return raw.get("noise_notification_threshold")
+        return None
 
     @property
     def icon(self):
         """Return the icon to use in the frontend."""
-        if self._threshold == 0:
+        threshold = self.native_value or 0
+        if threshold == 0:
             return "mdi:volume-off"
-        elif self._threshold < 33:
+        elif threshold < 33:
             return "mdi:volume-low"
-        elif self._threshold < 66:
+        elif threshold < 66:
             return "mdi:volume-medium"
         else:
             return "mdi:volume-high"
@@ -142,66 +142,59 @@ class RemiNoiseThresholdNumber(NumberEntity):
         """Set the noise threshold level."""
         try:
             threshold_int = int(value)
-            await self._api.set_noise_threshold(self._id, threshold_int)
-            self._threshold = threshold_int
-            _LOGGER.debug("Set noise threshold to %d for %s", threshold_int, self._name)
+            await self._api.set_noise_threshold(self._device_id, threshold_int)
+            _LOGGER.debug("Set noise threshold to %d for %s", threshold_int, self._attr_name)
+
+            # Request immediate refresh from coordinator
+            await self.coordinator.async_request_refresh()
+
         except Exception as e:
-            _LOGGER.error("Failed to set noise threshold for %s: %s", self._name, e)
-
-    async def async_update(self):
-        """Fetch the latest noise threshold from the API."""
-        try:
-            info = await self._api.get_remi_info(self._id)
-            raw = info.get("raw", {})
-            self._threshold = raw.get("noise_notification_threshold", self._threshold)
-        except Exception as e:
-            _LOGGER.error("Failed to update noise threshold for %s: %s", self._name, e)
+            _LOGGER.error("Failed to set noise threshold for %s: %s", self._attr_name, e)
+            raise
 
 
-class RemiNightFaceLevel(NumberEntity):
+class RemiNightFaceLevel(CoordinatorEntity, NumberEntity):
     """Representation of a Rémi night face level control."""
 
     _attr_translation_key = "night_face_level"
+    _attr_native_min_value = 0
+    _attr_native_max_value = 100
+    _attr_native_step = 1
+    _attr_mode = NumberMode.SLIDER
 
-    def __init__(self, api, device):
+    def __init__(self, coordinator: RemiCoordinator, api, device):
+        """Initialize the night face level number entity."""
+        super().__init__(coordinator)
         self._api = api
         self._device = device
-        self._name = f"{BRAND_NAME} {device.get('name', 'Unknown Device')} Night Face Level"
-        self._id = device["objectId"]
-        self._level = device.get("light_min", 0)
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 100
-        self._attr_native_step = 1
-        self._attr_mode = NumberMode.SLIDER
+        self._device_name = device.get("name", "Rémi")
+        self._device_id = device["objectId"]
+
+        self._attr_name = f"{BRAND_NAME} {self._device_name} Night Face Level"
+        self._attr_unique_id = f"{self._device_id}_night_face_level"
 
     @property
     def device_info(self):
         """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._id, f"{BRAND_NAME} {self._device.get('name', 'Unknown Device')}", self._device)
-
-    @property
-    def name(self):
-        """Return the name of the number entity."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID for the number entity."""
-        return f"{self._id}_night_face_level"
+        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
         """Return the current night face level."""
-        return self._level
+        if self.coordinator.data and "device_info" in self.coordinator.data:
+            device_info = self.coordinator.data["device_info"]
+            return device_info.get("light_min")
+        return None
 
     @property
     def icon(self):
         """Return the icon to use in the frontend."""
-        if self._level == 0:
+        level = self.native_value or 0
+        if level == 0:
             return "mdi:brightness-1"
-        elif self._level < 33:
+        elif level < 33:
             return "mdi:brightness-4"
-        elif self._level < 66:
+        elif level < 66:
             return "mdi:brightness-5"
         else:
             return "mdi:brightness-6"
@@ -210,16 +203,12 @@ class RemiNightFaceLevel(NumberEntity):
         """Set the night face level."""
         try:
             level_int = int(value)
-            await self._api.set_night_luminosity(self._id, level_int)
-            self._level = level_int
-            _LOGGER.debug("Set night face level to %d for %s", level_int, self._name)
-        except Exception as e:
-            _LOGGER.error("Failed to set night face level for %s: %s", self._name, e)
+            await self._api.set_night_luminosity(self._device_id, level_int)
+            _LOGGER.debug("Set night face level to %d for %s", level_int, self._attr_name)
 
-    async def async_update(self):
-        """Fetch the latest night face level from the API."""
-        try:
-            info = await self._api.get_remi_info(self._id)
-            self._level = info.get("light_min", self._level)
+            # Request immediate refresh from coordinator
+            await self.coordinator.async_request_refresh()
+
         except Exception as e:
-            _LOGGER.error("Failed to update night face level for %s: %s", self._name, e)
+            _LOGGER.error("Failed to set night face level for %s: %s", self._attr_name, e)
+            raise

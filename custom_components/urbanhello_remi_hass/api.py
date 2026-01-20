@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import aiohttp
 import asyncio
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,20 +32,20 @@ class RemiAPI:
     BASE_URL = "https://remi2.urbanhello.com/parse"
     APP_ID = "jf1a0bADt5fq"
 
-    def __init__(self, username: str, password: str, cache_duration: int = 60, request_timeout: int = 15):
+    def __init__(self, username: str, password: str, cache_duration: int = 60, request_timeout: int = 15) -> None:
         self.username = username
         self.password = password
-        self.session_token: Optional[str] = None
-        self.remis: List[Dict[str, Any]] = []
+        self.session_token: str | None = None
+        self.remis: list[dict[str, Any]] = []
         # Generic cache storage for Remi objects keyed by objectId
-        self.cache: Dict[str, Any] = {}
-        self.cache_expiry: Dict[str, float] = {}
+        self.cache: dict[str, Any] = {}
+        self.cache_expiry: dict[str, float] = {}
         self.cache_duration = float(cache_duration)
         # Faces map name -> objectId
-        self.faces: Dict[str, str] = {}
+        self.faces: dict[str, str] = {}
         # Alarms cache keyed by remi objectId
-        self.alarms: Dict[str, List[Dict[str, Any]]] = {}
-        self._session: Optional[aiohttp.ClientSession] = None
+        self.alarms: dict[str, list[dict[str, Any]]] = {}
+        self._session: aiohttp.ClientSession | None = None
         self._request_timeout = request_timeout
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
@@ -51,7 +53,7 @@ class RemiAPI:
             self._session = aiohttp.ClientSession()
         return self._session
 
-    def _headers(self, include_session: bool = True) -> Dict[str, str]:
+    def _headers(self, include_session: bool = True) -> dict[str, str]:
         headers = {
             "X-Parse-Application-Id": self.APP_ID,
             "Content-Type": "application/json",
@@ -60,7 +62,7 @@ class RemiAPI:
             headers["X-Parse-Session-Token"] = self.session_token
         return headers
 
-    async def _request(self, method: str, path: str, json: Optional[Dict] = None, timeout: Optional[int] = None, include_session: bool = True) -> Any:
+    async def _request(self, method: str, path: str, json: dict | None = None, timeout: int | None = None, include_session: bool = True) -> Any:
         """Perform an HTTP request and return parsed JSON or raw text.
 
         If a GET against a /classes/ path fails due to server behavior, retry
@@ -104,7 +106,7 @@ class RemiAPI:
             _LOGGER.debug("Request exception for %s %s: %s", method, url, exc)
             raise RemiAPIError(str(exc))
 
-    async def login(self) -> Dict[str, Any]:
+    async def login(self) -> dict[str, Any]:
         """Authenticate and populate session token, known Remi devices and faces.
 
         Returns the parsed JSON response from /login.
@@ -157,7 +159,7 @@ class RemiAPI:
                 await self._session.close()
                 self._session = None
 
-    async def get_faces(self, refresh: bool = False) -> Dict[str, str]:
+    async def get_faces(self, refresh: bool = False) -> dict[str, str]:
         """Retrieve available faces and return mapping name -> objectId.
 
         Results are cached in self.faces unless refresh=True.
@@ -168,7 +170,7 @@ class RemiAPI:
         result = await self._request("GET", "/classes/Face")
         results = result.get("results", []) if isinstance(result, dict) else []
         # Build mapping name -> objectId
-        faces: Dict[str, str] = {}
+        faces: dict[str, str] = {}
         for item in results:
             name = item.get("name")
             oid = item.get("objectId")
@@ -178,7 +180,7 @@ class RemiAPI:
         _LOGGER.debug("Retrieved %d faces", len(self.faces))
         return self.faces
 
-    async def list_remis(self, refresh: bool = False) -> List[Dict[str, Any]]:
+    async def list_remis(self, refresh: bool = False) -> list[dict[str, Any]]:
         """List Remi devices. Cached unless refresh=True."""
         if self.remis and not refresh:
             return self.remis
@@ -192,7 +194,7 @@ class RemiAPI:
         expiry = self.cache_expiry.get(key)
         return expiry is not None and expiry > time.time()
 
-    async def get_remi_info(self, object_id: str, refresh: bool = False) -> Dict[str, Any]:
+    async def get_remi_info(self, object_id: str, refresh: bool = False) -> dict[str, Any]:
         """Retrieve Remi information with optional caching.
 
         Returns a normalized dict containing fields commonly used by the
@@ -206,7 +208,7 @@ class RemiAPI:
             raise RemiAPIError("Unexpected response when fetching Remi info")
 
         # Normalise fields with fallbacks
-        remi_info: Dict[str, Any] = {
+        remi_info: dict[str, Any] = {
             "temperature": (data.get("temp") + 40) if data.get("temp") is not None else None,
             "luminosity": data.get("luminosity"),
             "name": data.get("name"),
@@ -222,10 +224,10 @@ class RemiAPI:
         _LOGGER.debug("Cached remi %s for %.1fs", object_id, self.cache_duration)
         return remi_info
 
-    def _pointer(self, class_name: str, object_id: str) -> Dict[str, str]:
+    def _pointer(self, class_name: str, object_id: str) -> dict[str, str]:
         return {"__type": "Pointer", "className": class_name, "objectId": object_id}
 
-    async def _update_remi(self, object_id: str, payload: Dict[str, Any]) -> Any:
+    async def _update_remi(self, object_id: str, payload: dict[str, Any]) -> Any:
         """Generic helper to update a Remi object via PUT and invalidate cache."""
         result = await self._request("PUT", f"/classes/Remi/{object_id}", json=payload)
         # Invalidate cache for that Remi
@@ -277,7 +279,7 @@ class RemiAPI:
         payload = {"face": self._pointer("Face", face_id)}
         return await self._update_remi(object_id, payload)
 
-    async def get_current_face(self, object_id: str) -> Optional[str]:
+    async def get_current_face(self, object_id: str) -> str | None:
         """Return the friendly name of the current face for the given Remi, if known."""
         info = await self.get_remi_info(object_id)
         fid = info.get("face")
@@ -305,7 +307,7 @@ class RemiAPI:
         payload = {"face": self._pointer("Face", face_id)}
         return await self._update_remi(object_id, payload)
 
-    async def play_media(self, object_id: str, sound: str, volume: Optional[int] = None) -> Any:
+    async def play_media(self, object_id: str, sound: str, volume: int | None = None) -> Any:
         """Instruct the device to play a sound.
 
         The implementation sets a 'sound' field on the Remi object. If the
@@ -320,7 +322,7 @@ class RemiAPI:
         Returns:
             Result of the update operation
         """
-        payload: Dict[str, Any] = {"sound": sound}
+        payload: dict[str, Any] = {"sound": sound}
         if volume is not None:
             payload["volume"] = volume
         return await self._update_remi(object_id, payload)
@@ -335,7 +337,7 @@ class RemiAPI:
             Result of the update operation
         """
         # Setting sound to empty/null should stop playback
-        payload: Dict[str, Any] = {"sound": ""}
+        payload: dict[str, Any] = {"sound": ""}
         return await self._update_remi(object_id, payload)
 
     async def close(self) -> None:
@@ -348,7 +350,7 @@ class RemiAPI:
     # ALARM MANAGEMENT METHODS
     # ========================================================================
 
-    async def get_alarms(self, object_id: str, refresh: bool = False) -> List[Dict[str, Any]]:
+    async def get_alarms(self, object_id: str, refresh: bool = False) -> list[dict[str, Any]]:
         """Retrieve all alarms for a specific Remi device from Event class.
 
         Args:
@@ -361,7 +363,7 @@ class RemiAPI:
         if not refresh and object_id in self.alarms:
             return self.alarms[object_id]
 
-        alarms: List[Dict[str, Any]] = []
+        alarms: list[dict[str, Any]] = []
 
         # Try to get alarms from Event class (this is where Remi stores alarm clocks)
         try:
@@ -385,7 +387,7 @@ class RemiAPI:
         self.alarms[object_id] = alarms
         return alarms
 
-    def _convert_event_to_alarm(self, event: Dict[str, Any], device_id: str) -> Optional[Dict[str, Any]]:
+    def _convert_event_to_alarm(self, event: dict[str, Any], device_id: str) -> dict[str, Any] | None:
         """Convert an Event object to a standardized alarm format.
 
         Args:
@@ -437,12 +439,12 @@ class RemiAPI:
         object_id: str,
         time: str,
         enabled: bool = True,
-        days: Optional[List[int]] = None,
-        sound: Optional[str] = None,
-        face: Optional[str] = None,
-        volume: Optional[int] = None,
-        label: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        days: list[int] | None = None,
+        sound: str | None = None,
+        face: str | None = None,
+        volume: int | None = None,
+        label: str | None = None,
+    ) -> dict[str, Any]:
         """Create a new alarm for a Remi device.
 
         Args:
@@ -459,7 +461,7 @@ class RemiAPI:
             The created alarm object
         """
         # Prepare the alarm payload
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "remi": self._pointer("Remi", object_id),
             "time": time,
             "enabled": enabled,
@@ -506,14 +508,14 @@ class RemiAPI:
         self,
         object_id: str,
         alarm_id: str,
-        time: Optional[str] = None,
-        enabled: Optional[bool] = None,
-        days: Optional[List[int]] = None,
-        sound: Optional[str] = None,
-        face: Optional[str] = None,
-        volume: Optional[int] = None,
-        label: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        time: str | None = None,
+        enabled: bool | None = None,
+        days: list[int] | None = None,
+        sound: str | None = None,
+        face: str | None = None,
+        volume: int | None = None,
+        label: str | None = None,
+    ) -> dict[str, Any]:
         """Update an existing alarm.
 
         Args:
@@ -530,7 +532,7 @@ class RemiAPI:
         Returns:
             The updated alarm object
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
 
         if time is not None:
             payload["time"] = time
@@ -603,7 +605,7 @@ class RemiAPI:
                 _LOGGER.error("Could not delete alarm/schedule: %s", e2)
                 raise RemiAPIError(f"Failed to delete alarm: {e2}")
 
-    async def enable_alarm(self, object_id: str, alarm_id: str) -> Dict[str, Any]:
+    async def enable_alarm(self, object_id: str, alarm_id: str) -> dict[str, Any]:
         """Enable an alarm.
 
         Args:
@@ -615,7 +617,7 @@ class RemiAPI:
         """
         return await self.update_alarm(object_id, alarm_id, enabled=True)
 
-    async def disable_alarm(self, object_id: str, alarm_id: str) -> Dict[str, Any]:
+    async def disable_alarm(self, object_id: str, alarm_id: str) -> dict[str, Any]:
         """Disable an alarm.
 
         Args:
@@ -627,7 +629,7 @@ class RemiAPI:
         """
         return await self.update_alarm(object_id, alarm_id, enabled=False)
 
-    async def snooze_alarm(self, object_id: str, alarm_id: str, duration: int = 9) -> Dict[str, Any]:
+    async def snooze_alarm(self, object_id: str, alarm_id: str, duration: int = 9) -> dict[str, Any]:
         """Snooze an alarm for a specified duration.
 
         Args:
@@ -661,7 +663,7 @@ class RemiAPI:
             # Fallback: just disable and re-enable later
             raise RemiAPIError(f"Snooze not supported by API: {e}")
 
-    async def trigger_alarm(self, object_id: str, alarm_id: str) -> Dict[str, Any]:
+    async def trigger_alarm(self, object_id: str, alarm_id: str) -> dict[str, Any]:
         """Manually trigger an alarm (for testing).
 
         Args:
