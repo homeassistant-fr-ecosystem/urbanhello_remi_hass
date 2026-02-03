@@ -30,6 +30,9 @@ ALARM_SNOOZE_DURATION = 9  # minutes
 SERVICE_TRIGGER_ALARM = "trigger_alarm"
 SERVICE_SNOOZE_ALARM = "snooze_alarm"
 SERVICE_STOP_ALARM = "stop_alarm"
+SERVICE_CREATE_ALARM = "create_alarm"
+SERVICE_DELETE_ALARM = "delete_alarm"
+SERVICE_UPDATE_ALARM = "update_alarm"
 
 
 def get_device_info(

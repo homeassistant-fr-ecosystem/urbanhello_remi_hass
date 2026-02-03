@@ -4,103 +4,163 @@ import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 
-from .api import RemiAPI
-from .const import DOMAIN
+from .api import RemiAPI, RemiAPIAuthError, RemiAPIError
+from .const import (
+    DOMAIN, 
+    SERVICE_CREATE_ALARM, 
+    SERVICE_DELETE_ALARM, 
+    SERVICE_UPDATE_ALARM,
+    SERVICE_TRIGGER_ALARM,
+    SERVICE_SNOOZE_ALARM
+)
 from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# Service schemas
+CREATE_ALARM_SCHEMA = vol.Schema({
+    vol.Required("device_id"): cv.string,
+    vol.Required("time"): cv.string,
+    vol.Optional("name"): cv.string,
+    vol.Optional("enabled"): cv.boolean,
+    vol.Optional("days"): vol.All(cv.ensure_list, [vol.Range(min=0, max=6)]),
+})
+
+DELETE_ALARM_SCHEMA = vol.Schema({
+    vol.Required("device_id"): cv.string,
+    vol.Required("alarm_id"): cv.string,
+})
+
+UPDATE_ALARM_SCHEMA = vol.Schema({
+    vol.Required("device_id"): cv.string,
+    vol.Required("alarm_id"): cv.string,
+    vol.Optional("time"): cv.string,
+    vol.Optional("enabled"): cv.boolean,
+    vol.Optional("name"): cv.string,
+    vol.Optional("days"): vol.All(cv.ensure_list, [vol.Range(min=0, max=6)]),
+    vol.Optional("face"): cv.string,
+    vol.Optional("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+})
+
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the Remi integration."""
-    if DOMAIN not in hass.data:
-        hass.data[DOMAIN] = {}
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Rémi from a config entry."""
-    if DOMAIN not in hass.data:
-        hass.data[DOMAIN] = {}
+    session = async_get_clientsession(hass)
+    api = RemiAPI(entry.data["username"], entry.data["password"], session=session)
 
-    # Create an API instance
-    api = RemiAPI(entry.data["username"], entry.data["password"])
-    await api.login()
+    try:
+        await api.login()
+    except RemiAPIAuthError as err:
+        raise ConfigEntryAuthFailed from err
+    except RemiAPIError as err:
+        raise ConfigEntryNotReady(f"Error connecting to Rémi API: {err}") from err
+    except Exception as err:
+        raise ConfigEntryNotReady(f"Unexpected error: {err}") from err
+
+    hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN]["api"] = api
 
-    # Get scan interval from options, default to 60 seconds
     scan_interval = entry.options.get("scan_interval", 60)
 
-    # Retrieve and store details of all Rémi devices
     devices = []
+    coordinators = {}
+    
     for remi in api.remis:
+        remi_id = remi.get("objectId") if isinstance(remi, dict) else remi
+        if not remi_id:
+            continue
+
         try:
-            # Handle both dict and string formats
-            if isinstance(remi, dict):
-                remi_id = remi.get("objectId")
-            else:
-                remi_id = remi
+            device_info = await api.get_remi_info(remi_id)
+            device_info["objectId"] = remi_id
+            devices.append(device_info)
 
-            if remi_id:
-                device_info = await api.get_remi_info(remi_id)
-                device_info["objectId"] = remi_id  # Add ID to the object
-
-                # Extract version information from raw data
-                raw = device_info.get("raw", {})
-                device_info["sw_version"] = raw.get("currentFirmwareVersion")
-                device_info["hw_version"] = raw.get("currentBluetoothVersion")
-
-                devices.append(device_info)
+            coordinator = RemiCoordinator(
+                hass, 
+                api, 
+                remi_id, 
+                device_info.get("name", "Rémi"), 
+                update_interval=scan_interval
+            )
+            await coordinator.async_config_entry_first_refresh()
+            coordinators[remi_id] = coordinator
+            
         except Exception as e:
-            _LOGGER.error("Failed to fetch device info for Remi ID %s: %s", remi_id if 'remi_id' in locals() else remi, e)
+            _LOGGER.error("Failed to setup Remi device %s: %s", remi_id, e)
+
+    if not coordinators:
+        raise ConfigEntryNotReady("No Rémi devices could be initialized")
 
     hass.data[DOMAIN]["devices"] = devices
-
-    # Initialize coordinators for each device
-    coordinators = {}
-    for device in devices:
-        device_id = device["objectId"]
-        device_name = device.get("name", "Rémi")
-
-        coordinator = RemiCoordinator(hass, api, device_id, device_name, update_interval=scan_interval)
-        # Perform initial refresh
-        await coordinator.async_config_entry_first_refresh()
-        coordinators[device_id] = coordinator
-
     hass.data[DOMAIN]["coordinators"] = coordinators
 
-    # Register update listener
+    # Register Services
+    async def handle_create_alarm(call: ServiceCall):
+        device_id = call.data["device_id"]
+        time = call.data["time"]
+        kwargs = {k: v for k, v in call.data.items() if k not in ["device_id", "time"]}
+        api = hass.data[DOMAIN]["api"]
+        await api.create_alarm(device_id, time, **kwargs)
+        if device_id in coordinators:
+            await coordinators[device_id].async_request_refresh()
+
+    async def handle_delete_alarm(call: ServiceCall):
+        device_id = call.data["device_id"]
+        alarm_id = call.data["alarm_id"]
+        api = hass.data[DOMAIN]["api"]
+        await api.delete_alarm(device_id, alarm_id)
+        if device_id in coordinators:
+            await coordinators[device_id].async_request_refresh()
+
+    async def handle_update_alarm(call: ServiceCall):
+        device_id = call.data["device_id"]
+        alarm_id = call.data["alarm_id"]
+        kwargs = {k: v for k, v in call.data.items() if k not in ["device_id", "alarm_id"]}
+        api = hass.data[DOMAIN]["api"]
+        await api.update_alarm(device_id, alarm_id, **kwargs)
+        if device_id in coordinators:
+            await coordinators[device_id].async_request_refresh()
+
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_ALARM, handle_create_alarm, schema=CREATE_ALARM_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_DELETE_ALARM, handle_delete_alarm, schema=DELETE_ALARM_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_ALARM, handle_update_alarm, schema=UPDATE_ALARM_SCHEMA)
+
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-    # Forward setup to all platforms
     await hass.config_entries.async_forward_entry_setups(
         entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select", "time", "switch"]
     )
 
     return True
 
-
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select", "time", "switch"]
     )
 
     if unload_ok:
-        # Close the API session
-        if DOMAIN in hass.data and "api" in hass.data[DOMAIN]:
-            api = hass.data[DOMAIN]["api"]
-            await api.close()
-
-        # Clean up stored data
         hass.data[DOMAIN].pop("api", None)
         hass.data[DOMAIN].pop("devices", None)
         hass.data[DOMAIN].pop("coordinators", None)
+        
+        # Unregister services if this is the last entry
+        if not hass.data[DOMAIN]:
+            hass.services.async_remove(DOMAIN, SERVICE_CREATE_ALARM)
+            hass.services.async_remove(DOMAIN, SERVICE_DELETE_ALARM)
+            hass.services.async_remove(DOMAIN, SERVICE_UPDATE_ALARM)
 
     return unload_ok
 
-
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    await hass.config_entries.async_reload_entry(entry)
+    """Reload config entry when options are updated."""
+    await hass.config_entries.async_reload(entry.entry_id)
