@@ -1,6 +1,11 @@
-from homeassistant.components.select import SelectEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN, BRAND_NAME, get_device_info
+from .const import DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
 import logging
 
@@ -8,12 +13,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up select entities for Rémi devices."""
-    api = hass.data[DOMAIN]["api"]
+    """Set up sensor entities for Rémi devices."""
     devices = hass.data[DOMAIN]["devices"]
     coordinators = hass.data[DOMAIN]["coordinators"]
 
-    selects = []
+    sensors = []
     for device in devices:
         device_id = device["objectId"]
         device_name = device.get("name", "Rémi")
@@ -23,26 +27,27 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
             continue
 
-        selects.append(RemiFaceSelect(coordinator, api, device))
+        sensors.append(RemiTemperatureSensor(coordinator, device))
 
-    async_add_entities(selects)
+    async_add_entities(sensors)
 
 
-class RemiFaceSelect(CoordinatorEntity, SelectEntity):
-    """Representation of a Rémi face selector."""
+class RemiTemperatureSensor(CoordinatorEntity, SensorEntity):
+    """Representation of a Rémi temperature sensor."""
 
-    _attr_translation_key = "face"
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_translation_key = "temperature"
 
-    def __init__(self, coordinator: RemiCoordinator, api, device):
-        """Initialize the face select entity."""
+    def __init__(self, coordinator: RemiCoordinator, device):
+        """Initialize the temperature sensor."""
         super().__init__(coordinator)
-        self._api = api
         self._device = device
         self._device_name = device.get("name", "Rémi")
         self._device_id = device["objectId"]
-
-        self._attr_name = f"{BRAND_NAME} {self._device_name} Face"
-        self._attr_unique_id = f"{self._device_id}_face_select"
+        self._attr_unique_id = f"{self._device_id}_temperature"
 
     @property
     def device_info(self):
@@ -50,57 +55,13 @@ class RemiFaceSelect(CoordinatorEntity, SelectEntity):
         return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
-    def current_option(self):
-        """Return the currently selected face."""
+    def native_value(self):
+        """Return the state of the sensor."""
         if self.coordinator.data and "device_info" in self.coordinator.data:
-            device_info = self.coordinator.data["device_info"]
-            face_id = device_info.get("face")
-            if face_id:
-                # Reverse lookup face name from ID
-                for name, fid in self._api.faces.items():
-                    if fid == face_id:
-                        return name
+            temp = self.coordinator.data["device_info"].get("temperature")
+            if temp is not None:
+                try:
+                    return float(temp) / 10.0
+                except (ValueError, TypeError):
+                    _LOGGER.warning("Invalid temperature value received for %s: %s", self.name, temp)
         return None
-
-    @property
-    def options(self):
-        """Return the list of available faces."""
-        if self._api.faces:
-            return sorted(list(self._api.faces.keys()))
-        return ["sleepyFace", "awakeFace", "blankFace", "semiAwakeFace", "smilyFace"]
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend based on current face."""
-        current_face = self.current_option
-        if current_face is None:
-            return "mdi:emoticon-neutral-outline"
-
-        face_lower = current_face.lower()
-
-        # Map face names to appropriate icons
-        if "sleepy" in face_lower or "sleep" in face_lower:
-            return "mdi:sleep"
-        elif "awake" in face_lower:
-            return "mdi:emoticon-happy"
-        elif "blank" in face_lower:
-            return "mdi:emoticon-neutral"
-        elif "semiawake" in face_lower:
-            return "mdi:emoticon-cool"
-        elif "smily" in face_lower or "smile" in face_lower:
-            return "mdi:emoticon-happy-outline"
-        else:
-            return "mdi:emoticon-outline"
-
-    async def async_select_option(self, option: str) -> None:
-        """Change the selected face."""
-        try:
-            await self._api.set_face_by_name(self._device_id, option)
-            _LOGGER.info("Changed face to %s for %s", option, self._attr_name)
-
-            # Request immediate refresh from coordinator
-            await self.coordinator.async_request_refresh()
-
-        except Exception as e:
-            _LOGGER.error("Failed to set face for %s: %s", self._attr_name, e)
-            raise
