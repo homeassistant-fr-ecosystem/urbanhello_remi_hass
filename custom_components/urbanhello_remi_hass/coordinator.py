@@ -15,14 +15,18 @@ from .api import RemiAPI, RemiAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
-# Update interval for polling device state from the API
-UPDATE_INTERVAL = timedelta(minutes=1)
-
 
 class RemiCoordinator(DataUpdateCoordinator):
     """Coordinator to manage fetching Remi device and alarm data from the API."""
 
-    def __init__(self, hass: HomeAssistant, api: RemiAPI, device_id: str, device_name: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: RemiAPI,
+        device_id: str,
+        device_name: str,
+        update_interval: int = 60,
+    ) -> None:
         """Initialize the coordinator.
 
         Args:
@@ -30,6 +34,7 @@ class RemiCoordinator(DataUpdateCoordinator):
             api: RemiAPI instance
             device_id: The Remi device objectId
             device_name: Human-readable device name
+            update_interval: Update interval in seconds
         """
         self.api = api
         self.device_id = device_id
@@ -39,7 +44,7 @@ class RemiCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=f"Remi {device_name}",
-            update_interval=UPDATE_INTERVAL,
+            update_interval=timedelta(seconds=update_interval),
         )
 
     async def _async_update_data(self) -> dict[str, Any]:

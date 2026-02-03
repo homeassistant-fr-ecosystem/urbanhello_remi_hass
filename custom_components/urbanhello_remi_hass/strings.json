@@ -18,5 +18,29 @@
     "abort": {
       "already_configured": "This account is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Update interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "Temperature"
+      },
+      "face": {
+        "name": "Face"
+      }
+    },
+    "select": {
+      "face": {
+        "name": "Face"
+      }
+    }
   }
 }

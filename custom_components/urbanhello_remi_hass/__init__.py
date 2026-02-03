@@ -28,6 +28,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await api.login()
     hass.data[DOMAIN]["api"] = api
 
+    # Get scan interval from options, default to 60 seconds
+    scan_interval = entry.options.get("scan_interval", 60)
+
     # Retrieve and store details of all Rémi devices
     devices = []
     for remi in api.remis:
@@ -53,24 +56,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data[DOMAIN]["devices"] = devices
 
-    # Initialize alarm clock storage
-    if "alarm_times" not in hass.data[DOMAIN]:
-        hass.data[DOMAIN]["alarm_times"] = {}
-    if "alarm_states" not in hass.data[DOMAIN]:
-        hass.data[DOMAIN]["alarm_states"] = {}
-
     # Initialize coordinators for each device
     coordinators = {}
     for device in devices:
         device_id = device["objectId"]
         device_name = device.get("name", "Rémi")
 
-        coordinator = RemiCoordinator(hass, api, device_id, device_name)
+        coordinator = RemiCoordinator(hass, api, device_id, device_name, update_interval=scan_interval)
         # Perform initial refresh
         await coordinator.async_config_entry_first_refresh()
         coordinators[device_id] = coordinator
 
     hass.data[DOMAIN]["coordinators"] = coordinators
+
+    # Register update listener
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     # Forward setup to all platforms
     await hass.config_entries.async_forward_entry_setups(
@@ -82,13 +82,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Stop all coordinators before unloading
-    if DOMAIN in hass.data and "coordinators" in hass.data[DOMAIN]:
-        coordinators = hass.data[DOMAIN]["coordinators"]
-        for coordinator in coordinators.values():
-            # Stop the coordinator's refresh timer
-            coordinator._unsub_refresh()
-
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry, ["light", "sensor", "binary_sensor", "number", "device_tracker", "select", "time", "switch"]
@@ -103,8 +96,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Clean up stored data
         hass.data[DOMAIN].pop("api", None)
         hass.data[DOMAIN].pop("devices", None)
-        hass.data[DOMAIN].pop("alarm_times", None)
-        hass.data[DOMAIN].pop("alarm_states", None)
         hass.data[DOMAIN].pop("coordinators", None)
 
     return unload_ok
@@ -112,5 +103,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    await hass.config_entries.async_reload_entry(entry)
