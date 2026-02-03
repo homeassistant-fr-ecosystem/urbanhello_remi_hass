@@ -1,13 +1,12 @@
-
 {
-    "domain": "urbanhello_remi",
-    "name": "Rémi UrbanHello",
-    "version": "0.1.0",
-    "dependencies": [],
-    "codeowners": ["@pdruart","@sguernion"],
-    "requirements": ["aiohttp"],
-    "config_flow": true,
-    "iot_class": "cloud_polling",
-    "issue_tracker": "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass/issues",
-    "documentation": "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass"
+  "domain": "urbanhello_remi",
+  "name": "Rémi UrbanHello",
+  "codeowners": ["@pdruart", "@sguernion"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass/issues",
+  "requirements": ["aiohttp"],
+  "version": "0.1.0"
 }

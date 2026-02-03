@@ -8,7 +8,7 @@ create_alarm:
       required: true
       selector:
         device:
-          integration: urbanhello_remi_hass
+          integration: urbanhello_remi
           model: Rémi Clock
     time:
       name: Time
@@ -65,7 +65,7 @@ delete_alarm:
       required: true
       selector:
         device:
-          integration: urbanhello_remi_hass
+          integration: urbanhello_remi
           model: Rémi Clock
     alarm_id:
       name: Alarm ID
@@ -84,7 +84,7 @@ update_alarm:
       required: true
       selector:
         device:
-          integration: urbanhello_remi_hass
+          integration: urbanhello_remi
           model: Rémi Clock
     alarm_id:
       name: Alarm ID
@@ -140,15 +140,15 @@ update_alarm:
         select:
           options:
             - label: Sleepy
-              value: sleepyFace
+              value: sleepy_face
             - label: Awake
-              value: awakeFace
+              value: awake_face
             - label: Blank
-              value: blankFace
+              value: blank_face
             - label: Semi Awake
-              value: semiAwakeFace
+              value: semi_awake_face
             - label: Smily
-              value: smilyFace
+              value: smily_face
     brightness:
       name: Brightness
       description: Brightness level (0-100).
@@ -169,7 +169,7 @@ trigger_alarm:
       required: true
       selector:
         device:
-          integration: urbanhello_remi_hass
+          integration: urbanhello_remi
           model: Rémi Clock
     alarm_id:
       name: Alarm ID
@@ -188,7 +188,7 @@ snooze_alarm:
       required: true
       selector:
         device:
-          integration: urbanhello_remi_hass
+          integration: urbanhello_remi
           model: Rémi Clock
     alarm_id:
       name: Alarm ID

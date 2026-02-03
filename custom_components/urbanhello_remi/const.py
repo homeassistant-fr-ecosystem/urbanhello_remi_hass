@@ -10,20 +10,22 @@ MODEL = "Rémi Clock"
 BRAND_NAME = "Rémi"
 
 # Face name translation keys
-FACE_TRANSLATION_KEYS = {
-    "sleepyFace": "sleepyFace",
-    "awakeFace": "awakeFace",
-    "blankFace": "blankFace",
-    "semiAwakeFace": "semiAwakeFace",
-    "smilyFace": "smilyFace",
+FACE_MAP_API_TO_HA = {
+    "sleepyFace": "sleepy_face",
+    "awakeFace": "awake_face",
+    "blankFace": "blank_face",
+    "semiAwakeFace": "semi_awake_face",
+    "smilyFace": "smily_face",
 }
+
+FACE_MAP_HA_TO_API = {v: k for k, v in FACE_MAP_API_TO_HA.items()}
 
 # Alarm clock constants
 MAX_ALARMS_PER_DEVICE = 3
 DEFAULT_ALARM_HOUR = 7
 DEFAULT_ALARM_MINUTE = 0
 DEFAULT_ALARM_VOLUME = 50
-DEFAULT_ALARM_FACE = "awakeFace"
+DEFAULT_ALARM_FACE = "awake_face"
 ALARM_SNOOZE_DURATION = 9  # minutes
 
 # Alarm clock service names

@@ -1,6 +1,6 @@
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN, BRAND_NAME, get_device_info
+from .const import DOMAIN, BRAND_NAME, get_device_info, FACE_MAP_API_TO_HA, FACE_MAP_HA_TO_API
 from .coordinator import RemiCoordinator
 import logging
 
@@ -59,15 +59,15 @@ class RemiFaceSelect(CoordinatorEntity, SelectEntity):
                 # Reverse lookup face name from ID
                 for name, fid in self._api.faces.items():
                     if fid == face_id:
-                        return name
+                        return FACE_MAP_API_TO_HA.get(name, name)
         return None
 
     @property
     def options(self):
         """Return the list of available faces."""
         if self._api.faces:
-            return sorted(list(self._api.faces.keys()))
-        return ["sleepyFace", "awakeFace", "blankFace", "semiAwakeFace", "smilyFace"]
+            return sorted([FACE_MAP_API_TO_HA.get(name, name) for name in self._api.faces.keys()])
+        return list(FACE_MAP_API_TO_HA.values())
 
     @property
     def icon(self):
@@ -95,7 +95,8 @@ class RemiFaceSelect(CoordinatorEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Change the selected face."""
         try:
-            await self._api.set_face_by_name(self._device_id, option)
+            api_option = FACE_MAP_HA_TO_API.get(option, option)
+            await self._api.set_face_by_name(self._device_id, api_option)
             _LOGGER.info("Changed face to %s for %s", option, self._attr_name)
 
             # Request immediate refresh from coordinator

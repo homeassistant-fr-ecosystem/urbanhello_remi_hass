@@ -27,11 +27,11 @@
       "face": {
         "name": "Face",
         "state": {
-          "sleepyFace": "Sleepy",
-          "awakeFace": "Awake",
-          "blankFace": "Blank",
-          "semiAwakeFace": "Semi-Awake",
-          "smilyFace": "Smiley"
+          "sleepy_face": "Sleepy",
+          "awake_face": "Awake",
+          "blank_face": "Blank",
+          "semi_awake_face": "Semi-Awake",
+          "smily_face": "Smiley"
         }
       },
       "raw_data": {
@@ -67,11 +67,11 @@
       "face": {
         "name": "Face",
         "state": {
-          "sleepyFace": "Sleepy",
-          "awakeFace": "Awake",
-          "blankFace": "Blank",
-          "semiAwakeFace": "Semi-Awake",
-          "smilyFace": "Smiley"
+          "sleepy_face": "Sleepy",
+          "awake_face": "Awake",
+          "blank_face": "Blank",
+          "semi_awake_face": "Semi-Awake",
+          "smily_face": "Smiley"
         }
       }
     },

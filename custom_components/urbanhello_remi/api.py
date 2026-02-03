@@ -235,11 +235,19 @@ class RemiAPI:
 
     async def set_face_by_name(self, object_id: str, face_name: str) -> Any:
         """Set face by name."""
-        face_id = self.faces.get(face_name)
+        face_mapping = {
+            "sleepy_face": "sleepyFace",
+            "awake_face": "awakeFace",
+            "blank_face": "blankFace",
+            "semi_awake_face": "semiAwakeFace",
+            "smily_face": "smilyFace",
+        }
+        api_face_name = face_mapping.get(face_name, face_name)
+        face_id = self.faces.get(api_face_name)
         if not face_id:
             await self.get_faces(refresh=True)
-            face_id = self.faces.get(face_name)
-        if not face_id: raise RemiAPIError(f"Unknown face '{face_name}'")
+            face_id = self.faces.get(api_face_name)
+        if not face_id: raise RemiAPIError(f"Unknown face '{api_face_name}'")
         return await self._update_remi(object_id, {"face": self._pointer("Face", face_id)})
 
     async def play_media(self, object_id: str, sound: str, volume: int | None = None) -> Any:
@@ -350,10 +358,18 @@ class RemiAPI:
                 
                 # Map 'face' (name) to face pointer
                 if "face" in payload and isinstance(payload["face"], str):
-                    face_id = self.faces.get(payload["face"])
+                    face_mapping = {
+                        "sleepy_face": "sleepyFace",
+                        "awake_face": "awakeFace",
+                        "blank_face": "blankFace",
+                        "semi_awake_face": "semiAwakeFace",
+                        "smily_face": "smilyFace",
+                    }
+                    api_face_name = face_mapping.get(payload["face"], payload["face"])
+                    face_id = self.faces.get(api_face_name)
                     if not face_id:
                         await self.get_faces(refresh=True)
-                        face_id = self.faces.get(payload["face"])
+                        face_id = self.faces.get(api_face_name)
                     if face_id:
                         payload["face"] = self._pointer("Face", face_id)
                     else:
