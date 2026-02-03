@@ -1,7 +1,3 @@
-try:
-    from . import system_health
-except ImportError:
-    pass
 from __future__ import annotations
 
 import logging
@@ -14,7 +10,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 from .api import RemiAPI, RemiAPIAuthError, RemiAPIError
 from .const import (
@@ -28,6 +23,8 @@ from .const import (
 from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 # Service schemas
 CREATE_ALARM_SCHEMA = vol.Schema({
