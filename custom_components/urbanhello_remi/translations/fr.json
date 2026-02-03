@@ -1,0 +1,158 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Authentification Rémi UrbanHello",
+        "description": "Entrez vos identifiants de compte UrbanHello pour connecter vos appareils Rémi.",
+        "data": {
+          "username": "Adresse email",
+          "password": "Mot de passe"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Échec de l'authentification. Veuillez vérifier vos identifiants.",
+      "cannot_connect": "Impossible de se connecter au service Rémi. Veuillez réessayer plus tard.",
+      "unknown": "Une erreur inattendue s'est produite."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Intervalle de mise à jour (secondes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "Température"
+      },
+      "face": {
+        "name": "Visage"
+      }
+    },
+    "select": {
+      "face": {
+        "name": "Visage"
+      }
+    }
+  },
+  "services": {
+    "create_alarm": {
+      "name": "Créer un réveil",
+      "description": "Crée un nouveau réveil sur un appareil Rémi.",
+      "fields": {
+        "device_id": {
+          "name": "Appareil",
+          "description": "Sélectionnez l'appareil Rémi."
+        },
+        "time": {
+          "name": "Heure",
+          "description": "L'heure du réveil."
+        },
+        "name": {
+          "name": "Nom",
+          "description": "Le nom du réveil."
+        },
+        "enabled": {
+          "name": "Activé",
+          "description": "Si le réveil doit être activé immédiatement."
+        },
+        "days": {
+          "name": "Jours",
+          "description": "Sélectionnez les jours où le réveil doit se déclencher."
+        }
+      }
+    },
+    "delete_alarm": {
+      "name": "Supprimer un réveil",
+      "description": "Supprime un réveil existant d'un appareil Rémi.",
+      "fields": {
+        "device_id": {
+          "name": "Appareil",
+          "description": "Sélectionnez l'appareil Rémi."
+        },
+        "alarm_id": {
+          "name": "ID du réveil",
+          "description": "L'objectId du réveil à supprimer."
+        }
+      }
+    },
+    "update_alarm": {
+      "name": "Modifier un réveil",
+      "description": "Modifie les paramètres d'un réveil existant.",
+      "fields": {
+        "device_id": {
+          "name": "Appareil",
+          "description": "Sélectionnez l'appareil Rémi."
+        },
+        "alarm_id": {
+          "name": "ID du réveil",
+          "description": "L'objectId du réveil à modifier."
+        },
+        "time": {
+          "name": "Heure",
+          "description": "Nouvelle heure du réveil."
+        },
+        "enabled": {
+          "name": "Activé",
+          "description": "Activer ou désactiver le réveil."
+        },
+        "name": {
+          "name": "Nom",
+          "description": "Nouveau nom du réveil."
+        },
+        "days": {
+          "name": "Jours",
+          "description": "Sélectionnez les jours où le réveil doit se déclencher."
+        },
+        "face": {
+          "name": "Visage",
+          "description": "Le visage à afficher lors du déclenchement du réveil."
+        },
+        "brightness": {
+          "name": "Luminosité",
+          "description": "Niveau de luminosité (0-100)."
+        }
+      }
+    },
+    "trigger_alarm": {
+      "name": "Déclencher un réveil",
+      "description": "Déclenche manuellement un réveil sur un appareil Rémi.",
+      "fields": {
+        "device_id": {
+          "name": "Appareil",
+          "description": "Sélectionnez l'appareil Rémi."
+        },
+        "alarm_id": {
+          "name": "ID du réveil",
+          "description": "L'objectId du réveil à déclencher."
+        }
+      }
+    },
+    "snooze_alarm": {
+      "name": "Reporter un réveil",
+      "description": "Reporte un réveil actuellement actif sur un appareil Rémi.",
+      "fields": {
+        "device_id": {
+          "name": "Appareil",
+          "description": "Sélectionnez l'appareil Rémi."
+        },
+        "alarm_id": {
+          "name": "ID du réveil",
+          "description": "L'objectId du réveil à reporter."
+        },
+        "duration": {
+          "name": "Durée",
+          "description": "Durée du report en minutes."
+        }
+      }
+    }
+  }
+}
