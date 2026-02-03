@@ -1,0 +1,208 @@
+create_alarm:
+  name: Create Alarm
+  description: Create a new alarm clock on a Rémi device.
+  fields:
+    device_id:
+      name: Device
+      description: Select the Rémi device.
+      required: true
+      selector:
+        device:
+          integration: urbanhello_remi_hass
+          model: Rémi Clock
+    time:
+      name: Time
+      description: The alarm time in HH:MM format.
+      required: true
+      example: "07:30"
+      selector:
+        time:
+    name:
+      name: Name
+      description: The name of the alarm.
+      required: false
+      example: "School"
+      selector:
+        text:
+    enabled:
+      name: Enabled
+      description: Whether the alarm should be enabled immediately.
+      required: false
+      default: true
+      selector:
+        boolean:
+    days:
+      name: Days
+      description: List of days (0=Mon, 6=Sun).
+      required: false
+      default: [0, 1, 2, 3, 4, 5, 6]
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Monday
+              value: "0"
+            - label: Tuesday
+              value: "1"
+            - label: Wednesday
+              value: "2"
+            - label: Thursday
+              value: "3"
+            - label: Friday
+              value: "4"
+            - label: Saturday
+              value: "5"
+            - label: Sunday
+              value: "6"
+
+delete_alarm:
+  name: Delete Alarm
+  description: Delete an existing alarm clock from a Rémi device.
+  fields:
+    device_id:
+      name: Device
+      description: Select the Rémi device.
+      required: true
+      selector:
+        device:
+          integration: urbanhello_remi_hass
+          model: Rémi Clock
+    alarm_id:
+      name: Alarm ID
+      description: The objectId of the alarm to delete (found in alarm entity attributes).
+      required: true
+      selector:
+        text:
+
+update_alarm:
+  name: Update Alarm
+  description: Update an existing alarm clock's settings.
+  fields:
+    device_id:
+      name: Device
+      description: Select the Rémi device.
+      required: true
+      selector:
+        device:
+          integration: urbanhello_remi_hass
+          model: Rémi Clock
+    alarm_id:
+      name: Alarm ID
+      description: The objectId of the alarm to update.
+      required: true
+      selector:
+        text:
+    time:
+      name: Time
+      description: New alarm time in HH:MM format.
+      required: false
+      selector:
+        time:
+    enabled:
+      name: Enabled
+      description: Enable or disable the alarm.
+      required: false
+      selector:
+        boolean:
+    name:
+      name: Name
+      description: New name for the alarm.
+      required: false
+      selector:
+        text:
+    days:
+      name: Days
+      description: Select which days the alarm should trigger.
+      required: false
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Monday
+              value: "0"
+            - label: Tuesday
+              value: "1"
+            - label: Wednesday
+              value: "2"
+            - label: Thursday
+              value: "3"
+            - label: Friday
+              value: "4"
+            - label: Saturday
+              value: "5"
+            - label: Sunday
+              value: "6"
+    face:
+      name: Face
+      description: The face to show when the alarm triggers.
+      required: false
+      selector:
+        select:
+          options:
+            - label: Sleepy
+              value: sleepyFace
+            - label: Awake
+              value: awakeFace
+            - label: Blank
+              value: blankFace
+            - label: Semi Awake
+              value: semiAwakeFace
+            - label: Smily
+              value: smilyFace
+    brightness:
+      name: Brightness
+      description: Brightness level (0-100).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+
+trigger_alarm:
+  name: Trigger Alarm
+  description: Manually trigger an alarm on a Rémi device.
+  fields:
+    device_id:
+      name: Device
+      description: Select the Rémi device.
+      required: true
+      selector:
+        device:
+          integration: urbanhello_remi_hass
+          model: Rémi Clock
+    alarm_id:
+      name: Alarm ID
+      description: The objectId of the alarm to trigger.
+      required: true
+      selector:
+        text:
+
+snooze_alarm:
+  name: Snooze Alarm
+  description: Snooze a currently active alarm on a Rémi device.
+  fields:
+    device_id:
+      name: Device
+      description: Select the Rémi device.
+      required: true
+      selector:
+        device:
+          integration: urbanhello_remi_hass
+          model: Rémi Clock
+    alarm_id:
+      name: Alarm ID
+      description: The objectId of the alarm to snooze.
+      required: true
+      selector:
+        text:
+    duration:
+      name: Duration
+      description: Snooze duration in minutes.
+      required: false
+      default: 9
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: "min"

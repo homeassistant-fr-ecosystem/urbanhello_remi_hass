@@ -1,3 +1,7 @@
+try:
+    from . import system_health
+except ImportError:
+    pass
 from __future__ import annotations
 
 import logging
@@ -7,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 
@@ -29,7 +34,7 @@ CREATE_ALARM_SCHEMA = vol.Schema({
     vol.Required("time"): cv.string,
     vol.Optional("name"): cv.string,
     vol.Optional("enabled"): cv.boolean,
-    vol.Optional("days"): vol.All(cv.ensure_list, [vol.Range(min=0, max=6)]),
+    vol.Optional("days"): vol.All(cv.ensure_list, [vol.All(vol.Coerce(int), vol.Range(min=0, max=6))]),
 })
 
 DELETE_ALARM_SCHEMA = vol.Schema({
@@ -43,9 +48,20 @@ UPDATE_ALARM_SCHEMA = vol.Schema({
     vol.Optional("time"): cv.string,
     vol.Optional("enabled"): cv.boolean,
     vol.Optional("name"): cv.string,
-    vol.Optional("days"): vol.All(cv.ensure_list, [vol.Range(min=0, max=6)]),
+    vol.Optional("days"): vol.All(cv.ensure_list, [vol.All(vol.Coerce(int), vol.Range(min=0, max=6))]),
     vol.Optional("face"): cv.string,
     vol.Optional("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+})
+
+TRIGGER_ALARM_SCHEMA = vol.Schema({
+    vol.Required("device_id"): cv.string,
+    vol.Required("alarm_id"): cv.string,
+})
+
+SNOOZE_ALARM_SCHEMA = vol.Schema({
+    vol.Required("device_id"): cv.string,
+    vol.Required("alarm_id"): cv.string,
+    vol.Optional("duration"): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
 })
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
@@ -103,36 +119,65 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN]["devices"] = devices
     hass.data[DOMAIN]["coordinators"] = coordinators
 
+    def get_api_device_id(ha_device_id: str) -> str | None:
+        """Resolve HA device ID to API objectId."""
+        dev_reg = dr.async_get(hass)
+        device = dev_reg.async_get(ha_device_id)
+        if not device:
+            return ha_device_id # Fallback if not found in registry (user might have entered it manually)
+        
+        for identifier in device.identifiers:
+            if identifier[0] == DOMAIN:
+                return identifier[1]
+        return ha_device_id
+
     # Register Services
     async def handle_create_alarm(call: ServiceCall):
-        device_id = call.data["device_id"]
+        api_device_id = get_api_device_id(call.data["device_id"])
         time = call.data["time"]
         kwargs = {k: v for k, v in call.data.items() if k not in ["device_id", "time"]}
         api = hass.data[DOMAIN]["api"]
-        await api.create_alarm(device_id, time, **kwargs)
-        if device_id in coordinators:
-            await coordinators[device_id].async_request_refresh()
+        await api.create_alarm(api_device_id, time, **kwargs)
+        if api_device_id in coordinators:
+            await coordinators[api_device_id].async_request_refresh()
 
     async def handle_delete_alarm(call: ServiceCall):
-        device_id = call.data["device_id"]
+        api_device_id = get_api_device_id(call.data["device_id"])
         alarm_id = call.data["alarm_id"]
         api = hass.data[DOMAIN]["api"]
-        await api.delete_alarm(device_id, alarm_id)
-        if device_id in coordinators:
-            await coordinators[device_id].async_request_refresh()
+        await api.delete_alarm(api_device_id, alarm_id)
+        if api_device_id in coordinators:
+            await coordinators[api_device_id].async_request_refresh()
 
     async def handle_update_alarm(call: ServiceCall):
-        device_id = call.data["device_id"]
+        api_device_id = get_api_device_id(call.data["device_id"])
         alarm_id = call.data["alarm_id"]
         kwargs = {k: v for k, v in call.data.items() if k not in ["device_id", "alarm_id"]}
         api = hass.data[DOMAIN]["api"]
-        await api.update_alarm(device_id, alarm_id, **kwargs)
-        if device_id in coordinators:
-            await coordinators[device_id].async_request_refresh()
+        await api.update_alarm(api_device_id, alarm_id, **kwargs)
+        if api_device_id in coordinators:
+            await coordinators[api_device_id].async_request_refresh()
+
+    async def handle_trigger_alarm(call: ServiceCall):
+        api_device_id = get_api_device_id(call.data["device_id"])
+        alarm_id = call.data["alarm_id"]
+        api = hass.data[DOMAIN]["api"]
+        await api.trigger_alarm(api_device_id, alarm_id)
+
+    async def handle_snooze_alarm(call: ServiceCall):
+        api_device_id = get_api_device_id(call.data["device_id"])
+        alarm_id = call.data["alarm_id"]
+        duration = call.data.get("duration", 9)
+        api = hass.data[DOMAIN]["api"]
+        await api.snooze_alarm(api_device_id, alarm_id, duration)
+        if api_device_id in coordinators:
+            await coordinators[api_device_id].async_request_refresh()
 
     hass.services.async_register(DOMAIN, SERVICE_CREATE_ALARM, handle_create_alarm, schema=CREATE_ALARM_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_DELETE_ALARM, handle_delete_alarm, schema=DELETE_ALARM_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_UPDATE_ALARM, handle_update_alarm, schema=UPDATE_ALARM_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_TRIGGER_ALARM, handle_trigger_alarm, schema=TRIGGER_ALARM_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_SNOOZE_ALARM, handle_snooze_alarm, schema=SNOOZE_ALARM_SCHEMA)
 
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
@@ -158,6 +203,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(DOMAIN, SERVICE_CREATE_ALARM)
             hass.services.async_remove(DOMAIN, SERVICE_DELETE_ALARM)
             hass.services.async_remove(DOMAIN, SERVICE_UPDATE_ALARM)
+            hass.services.async_remove(DOMAIN, SERVICE_TRIGGER_ALARM)
+            hass.services.async_remove(DOMAIN, SERVICE_SNOOZE_ALARM)
 
     return unload_ok
 

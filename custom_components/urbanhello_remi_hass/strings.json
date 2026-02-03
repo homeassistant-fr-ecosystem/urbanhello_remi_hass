@@ -42,5 +42,117 @@
         "name": "Face"
       }
     }
+  },
+  "services": {
+    "create_alarm": {
+      "name": "Create alarm",
+      "description": "Create a new alarm clock on a Rémi device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "time": {
+          "name": "Time",
+          "description": "The alarm time."
+        },
+        "name": {
+          "name": "Name",
+          "description": "The name of the alarm."
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "Whether the alarm should be enabled immediately."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Select which days the alarm should trigger."
+        }
+      }
+    },
+    "delete_alarm": {
+      "name": "Delete alarm",
+      "description": "Delete an existing alarm clock from a Rémi device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "alarm_id": {
+          "name": "Alarm ID",
+          "description": "The objectId of the alarm to delete."
+        }
+      }
+    },
+    "update_alarm": {
+      "name": "Update alarm",
+      "description": "Update an existing alarm clock's settings.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "alarm_id": {
+          "name": "Alarm ID",
+          "description": "The objectId of the alarm to update."
+        },
+        "time": {
+          "name": "Time",
+          "description": "New alarm time."
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "Enable or disable the alarm."
+        },
+        "name": {
+          "name": "Name",
+          "description": "New name for the alarm."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Select which days the alarm should trigger."
+        },
+        "face": {
+          "name": "Face",
+          "description": "The face to show when the alarm triggers."
+        },
+        "brightness": {
+          "name": "Brightness",
+          "description": "Brightness level (0-100)."
+        }
+      }
+    },
+    "trigger_alarm": {
+      "name": "Trigger alarm",
+      "description": "Manually trigger an alarm on a Rémi device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "alarm_id": {
+          "name": "Alarm ID",
+          "description": "The objectId of the alarm to trigger."
+        }
+      }
+    },
+    "snooze_alarm": {
+      "name": "Snooze alarm",
+      "description": "Snooze a currently active alarm on a Rémi device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "alarm_id": {
+          "name": "Alarm ID",
+          "description": "The objectId of the alarm to snooze."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Snooze duration in minutes."
+        }
+      }
+    }
   }
 }
