@@ -19,8 +19,8 @@ jobs:
         run: |
           version="${{ github.event.release.tag_name }}"
           version="${version#v}"
-          jq --arg v "$version" '.version = $v' custom_components/urbanhello_remi_hass/manifest.json > tmp.json
-          mv tmp.json custom_components/urbanhello_remi_hass/manifest.json
+          jq --arg v "$version" '.version = $v' custom_components/urbanhello_remi/manifest.json > tmp.json
+          mv tmp.json custom_components/urbanhello_remi/manifest.json
 
       - name: Create release zip
         run: |
