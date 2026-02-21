@@ -1,10 +1,11 @@
 """Tests for the Rémi UrbanHello config flow."""
+
 from unittest.mock import patch
 
+from custom_components.urbanhello_remi_hass.const import DOMAIN
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.core import HomeAssistant
 
-from custom_components.urbanhello_remi_hass.const import DOMAIN
 
 async def test_flow_user(hass: HomeAssistant) -> None:
     """Test the user step."""

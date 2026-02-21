@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import aiohttp
-import asyncio
 import logging
 import time
-from typing import Any
 from datetime import datetime, timedelta
+from typing import Any
+
+import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,12 +25,12 @@ class RemiAPI:
     APP_ID = "jf1a0bADt5fq"
 
     def __init__(
-        self, 
-        username: str, 
-        password: str, 
+        self,
+        username: str,
+        password: str,
         session: aiohttp.ClientSession | None = None,
-        cache_duration: int = 60, 
-        request_timeout: int = 15
+        cache_duration: int = 60,
+        request_timeout: int = 15,
     ) -> None:
         self.username = username
         self.password = password
@@ -61,58 +61,91 @@ class RemiAPI:
             headers["X-Parse-Session-Token"] = self.session_token
         return headers
 
-    async def _request(self, method: str, path: str, json: dict | None = None, timeout: int | None = None, include_session: bool = True) -> Any:
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        json: dict | None = None,
+        timeout: int | None = None,
+        include_session: bool = True,
+    ) -> Any:
         """Perform an HTTP request and return parsed JSON or raw text."""
         session = await self._ensure_session()
         url = f"{self.BASE_URL}{path}"
         timeout_ctrl = aiohttp.ClientTimeout(total=timeout or self._request_timeout)
 
         try:
-            async with session.request(method, url, headers=self._headers(include_session), json=json, timeout=timeout_ctrl) as resp:
+            async with session.request(
+                method,
+                url,
+                headers=self._headers(include_session),
+                json=json,
+                timeout=timeout_ctrl,
+            ) as resp:
                 text = await resp.text()
                 if resp.status == 401:
-                    raise RemiAPIAuthError(f"Authentication failed: {text}")
+                    msg = f"Authentication failed: {text}"
+                    raise RemiAPIAuthError(msg)
                 if resp.status >= 400:
-                    _LOGGER.debug("Request %s %s failed: %s - %s", method, url, resp.status, text)
-                    raise RemiAPIError(f"HTTP {resp.status}: {text}")
+                    _LOGGER.debug(
+                        "Request %s %s failed: %s - %s", method, url, resp.status, text
+                    )
+                    msg = f"HTTP {resp.status}: {text}"
+                    raise RemiAPIError(msg)
                 try:
                     return await resp.json()
                 except Exception:
                     return text
-        except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+        except (TimeoutError, aiohttp.ClientError) as exc:
             if method.upper() == "GET" and "/classes/" in path:
-                _LOGGER.debug("GET failed for %s, retrying with POST _method=GET: %s", url, exc)
+                _LOGGER.debug(
+                    "GET failed for %s, retrying with POST _method=GET: %s", url, exc
+                )
                 fallback = (json or {}).copy()
                 fallback["_method"] = "GET"
                 try:
-                    async with session.post(url, headers=self._headers(include_session), json=fallback, timeout=timeout_ctrl) as resp:
+                    async with session.post(
+                        url,
+                        headers=self._headers(include_session),
+                        json=fallback,
+                        timeout=timeout_ctrl,
+                    ) as resp:
                         text = await resp.text()
                         if resp.status == 401:
-                            raise RemiAPIAuthError(f"Authentication failed: {text}")
+                            msg = f"Authentication failed: {text}"
+                            raise RemiAPIAuthError(msg)
                         if resp.status >= 400:
-                            _LOGGER.debug("Fallback POST failed: %s - %s", resp.status, text)
-                            raise RemiAPIError(f"HTTP {resp.status}: {text}")
+                            _LOGGER.debug(
+                                "Fallback POST failed: %s - %s", resp.status, text
+                            )
+                            msg = f"HTTP {resp.status}: {text}"
+                            raise RemiAPIError(msg)
                         try:
                             return await resp.json()
                         except Exception:
                             return text
                 except Exception as exc2:
                     _LOGGER.debug("Fallback POST also failed for %s: %s", url, exc2)
-                    raise RemiAPIError(f"Request failed: {exc2}")
-            raise RemiAPIError(str(exc))
+                    msg = f"Request failed: {exc2}"
+                    raise RemiAPIError(msg) from exc2
+            raise RemiAPIError(str(exc)) from exc
 
     async def login(self) -> dict[str, Any]:
         """Authenticate and populate session token, known Remi devices and faces."""
         payload = {"username": self.username, "password": self.password}
         # Login should not include a session header
-        data = await self._request("POST", "/login", json=payload, include_session=False)
+        data = await self._request(
+            "POST", "/login", json=payload, include_session=False
+        )
 
         if not isinstance(data, dict):
-            raise RemiAPIError("Unexpected response during login")
+            msg = "Unexpected response during login"
+            raise RemiAPIError(msg)
 
         self.session_token = data.get("sessionToken")
         if not self.session_token:
-            raise RemiAPIError("Login succeeded but session token was not returned")
+            msg = "Login succeeded but session token was not returned"
+            raise RemiAPIError(msg)
 
         # Some servers return remis on login, otherwise perform a query
         self.remis = data.get("remis") or []
@@ -148,7 +181,11 @@ class RemiAPI:
 
         result = await self._request("GET", "/classes/Face")
         results = result.get("results", []) if isinstance(result, dict) else []
-        self.faces = {item.get("name"): item.get("objectId") for item in results if item.get("name") and item.get("objectId")}
+        self.faces = {
+            item.get("name"): item.get("objectId")
+            for item in results
+            if item.get("name") and item.get("objectId")
+        }
         return self.faces
 
     async def list_remis(self, refresh: bool = False) -> list[dict[str, Any]]:
@@ -163,14 +200,17 @@ class RemiAPI:
         expiry = self.cache_expiry.get(key)
         return expiry is not None and expiry > time.time()
 
-    async def get_remi_info(self, object_id: str, refresh: bool = False) -> dict[str, Any]:
+    async def get_remi_info(
+        self, object_id: str, refresh: bool = False
+    ) -> dict[str, Any]:
         """Retrieve Remi information."""
         if not refresh and self._is_cache_valid(object_id):
             return self.cache[object_id]
 
         data = await self._request("GET", f"/classes/Remi/{object_id}")
         if not isinstance(data, dict):
-            raise RemiAPIError("Unexpected response when fetching Remi info")
+            msg = "Unexpected response when fetching Remi info"
+            raise RemiAPIError(msg)
 
         raw_temp = data.get("temp")
         normalized_temp = (raw_temp + 40) if raw_temp is not None else None
@@ -221,8 +261,12 @@ class RemiAPI:
         if not face_id:
             await self.get_faces(refresh=True)
             face_id = self.faces.get("sleepyFace")
-        if not face_id: raise RemiAPIError("sleepyFace not found")
-        return await self._update_remi(object_id, {"face": self._pointer("Face", face_id)})
+        if not face_id:
+            msg = "sleepyFace not found"
+            raise RemiAPIError(msg)
+        return await self._update_remi(
+            object_id, {"face": self._pointer("Face", face_id)}
+        )
 
     async def turn_off(self, object_id: str) -> Any:
         """Turn off."""
@@ -230,8 +274,12 @@ class RemiAPI:
         if not face_id:
             await self.get_faces(refresh=True)
             face_id = self.faces.get("awakeFace")
-        if not face_id: raise RemiAPIError("awakeFace not found")
-        return await self._update_remi(object_id, {"face": self._pointer("Face", face_id)})
+        if not face_id:
+            msg = "awakeFace not found"
+            raise RemiAPIError(msg)
+        return await self._update_remi(
+            object_id, {"face": self._pointer("Face", face_id)}
+        )
 
     async def set_face_by_name(self, object_id: str, face_name: str) -> Any:
         """Set face by name."""
@@ -247,16 +295,23 @@ class RemiAPI:
         if not face_id:
             await self.get_faces(refresh=True)
             face_id = self.faces.get(api_face_name)
-        if not face_id: raise RemiAPIError(f"Unknown face '{api_face_name}'")
-        return await self._update_remi(object_id, {"face": self._pointer("Face", face_id)})
+        if not face_id:
+            msg = f"Unknown face '{api_face_name}'"
+            raise RemiAPIError(msg)
+        return await self._update_remi(
+            object_id, {"face": self._pointer("Face", face_id)}
+        )
 
-    async def play_media(self, object_id: str, sound: str, volume: int | None = None) -> Any:
+    async def play_media(
+        self, object_id: str, sound: str, volume: int | None = None
+    ) -> Any:
         """Play media."""
         payload: dict[str, Any] = {"sound": sound}
-        if volume is not None: payload["volume"] = volume
+        if volume is not None:
+            payload["volume"] = volume
         return await self._update_remi(object_id, payload)
 
-    async def stop_sound(self, object_id: str) -> Any:
+    async def async_stop_sound(self, object_id: str) -> Any:
         """Stop sound."""
         return await self._update_remi(object_id, {"sound": ""})
 
@@ -267,7 +322,9 @@ class RemiAPI:
     # ALARM MANAGEMENT METHODS
     # ========================================================================
 
-    async def get_alarms(self, object_id: str, refresh: bool = False) -> list[dict[str, Any]]:
+    async def get_alarms(
+        self, object_id: str, refresh: bool = False
+    ) -> list[dict[str, Any]]:
         """Retrieve all alarms from Event class."""
         if not refresh and object_id in self.alarms:
             return self.alarms[object_id]
@@ -279,17 +336,24 @@ class RemiAPI:
             if isinstance(result, dict) and "results" in result:
                 for event in result.get("results", []):
                     alarm = self._convert_event_to_alarm(event, object_id)
-                    if alarm: alarms.append(alarm)
+                    if alarm:
+                        alarms.append(alarm)
         except RemiAPIError as e:
             _LOGGER.warning("Failed to get events: %s", e)
 
         self.alarms[object_id] = alarms
         return alarms
 
-    def _convert_event_to_alarm(self, event: dict[str, Any], device_id: str) -> dict[str, Any] | None:
+    def _convert_event_to_alarm(
+        self, event: dict[str, Any], device_id: str
+    ) -> dict[str, Any] | None:
         try:
             event_time = event.get("event_time", [0, 0])
-            time_str = f"{event_time[0]:02d}:{event_time[1]:02d}" if len(event_time) >= 2 else "00:00"
+            time_str = (
+                f"{event_time[0]:02d}:{event_time[1]:02d}"
+                if len(event_time) >= 2
+                else "00:00"
+            )
             recurrence = event.get("recurrence", [0] * 7)
             days = [i for i, enabled in enumerate(recurrence) if enabled]
             return {
@@ -306,16 +370,21 @@ class RemiAPI:
                 "length_min": event.get("length_min", 0),
                 "remi": self._pointer("Remi", device_id),
                 "face": event.get("face", {}),
-                "lightnight": event.get("lightnight", [255, 255, 255])
+                "lightnight": event.get("lightnight", [255, 255, 255]),
             }
-        except Exception: return None
+        except Exception:
+            return None
 
-    async def create_alarm(self, object_id: str, time: str, **kwargs) -> dict[str, Any]:
+    async def create_alarm(
+        self, object_id: str, alarm_time: str, **kwargs
+    ) -> dict[str, Any]:
         """Create a new alarm for a Remi device."""
         # Convert time HH:MM to [H, M] for Event class
-        time_parts = time.split(":")
-        event_time = [int(time_parts[0]), int(time_parts[1])] if len(time_parts) >= 2 else [0, 0]
-        
+        time_parts = alarm_time.split(":")
+        event_time = (
+            [int(time_parts[0]), int(time_parts[1])] if len(time_parts) >= 2 else [0, 0]
+        )
+
         payload = {
             "remi": self._pointer("Remi", object_id),
             "event_time": event_time,
@@ -323,7 +392,7 @@ class RemiAPI:
             "recurrence": kwargs.get("recurrence", [1] * 7),
         }
         # Add other kwargs as needed
-        
+
         for cls in ["Event", "Alarm", "Schedule"]:
             try:
                 result = await self._request("POST", f"/classes/{cls}", json=payload)
@@ -331,13 +400,16 @@ class RemiAPI:
                 return result
             except RemiAPIError:
                 continue
-        raise RemiAPIError("Failed to create alarm")
+        msg = "Failed to create alarm"
+        raise RemiAPIError(msg)
 
-    async def update_alarm(self, object_id: str, alarm_id: str, **kwargs) -> dict[str, Any]:
+    async def update_alarm(
+        self, object_id: str, alarm_id: str, **kwargs
+    ) -> dict[str, Any]:
         """Update an existing alarm, trying multiple classes with correct payloads."""
         for cls in ["Event", "Alarm", "Schedule"]:
             payload = kwargs.copy()
-            
+
             # Class-specific payload mapping
             if cls == "Event":
                 # Map 'time' to 'event_time'
@@ -346,7 +418,7 @@ class RemiAPI:
                     if len(time_parts) >= 2:
                         payload["event_time"] = [int(time_parts[0]), int(time_parts[1])]
                     del payload["time"]
-                
+
                 # Map 'days' to 'recurrence'
                 if "days" in payload:
                     recurrence = [0] * 7
@@ -355,7 +427,7 @@ class RemiAPI:
                             recurrence[day_index] = 1
                     payload["recurrence"] = recurrence
                     del payload["days"]
-                
+
                 # Map 'face' (name) to face pointer
                 if "face" in payload and isinstance(payload["face"], str):
                     face_mapping = {
@@ -374,24 +446,31 @@ class RemiAPI:
                         payload["face"] = self._pointer("Face", face_id)
                     else:
                         del payload["face"]
-            
+
             try:
-                result = await self._request("PUT", f"/classes/{cls}/{alarm_id}", json=payload)
+                result = await self._request(
+                    "PUT", f"/classes/{cls}/{alarm_id}", json=payload
+                )
                 self.alarms.pop(object_id, None)
-                _LOGGER.info("Successfully updated alarm %s via class %s", alarm_id, cls)
+                _LOGGER.info(
+                    "Successfully updated alarm %s via class %s", alarm_id, cls
+                )
                 return result
             except RemiAPIError as e:
-                _LOGGER.warning("Update failed for class %s (id: %s): %s", cls, alarm_id, e)
+                _LOGGER.warning(
+                    "Update failed for class %s (id: %s): %s", cls, alarm_id, e
+                )
                 continue
-        
-        raise RemiAPIError(f"Failed to update alarm {alarm_id} after trying all classes")
 
-    async def delete_alarm(self, object_id: str, alarm_id: str) -> bool:
+        msg = f"Failed to update alarm {alarm_id} after trying all classes"
+        raise RemiAPIError(msg)
+
+    async def delete_alarm(self, _object_id: str, alarm_id: str) -> bool:
         """Delete an alarm."""
         for cls in ["Event", "Alarm", "Schedule"]:
             try:
                 await self._request("DELETE", f"/classes/{cls}/{alarm_id}")
-                self.alarms.pop(object_id, None)
+                self.alarms.pop(_object_id, None)
                 return True
             except RemiAPIError:
                 continue
@@ -405,7 +484,9 @@ class RemiAPI:
         """Disable an alarm."""
         return await self.update_alarm(object_id, alarm_id, enabled=False)
 
-    async def snooze_alarm(self, object_id: str, alarm_id: str, duration: int = 9) -> dict[str, Any]:
+    async def snooze_alarm(
+        self, object_id: str, alarm_id: str, duration: int = 9
+    ) -> dict[str, Any]:
         """Snooze an alarm for a specified duration."""
         now = datetime.now()
         snooze_until = now + timedelta(minutes=duration)
@@ -415,12 +496,15 @@ class RemiAPI:
         }
         for cls in ["Event", "Alarm", "Schedule"]:
             try:
-                result = await self._request("PUT", f"/classes/{cls}/{alarm_id}", json=payload)
+                result = await self._request(
+                    "PUT", f"/classes/{cls}/{alarm_id}", json=payload
+                )
                 self.alarms.pop(object_id, None)
                 return result
             except RemiAPIError:
                 continue
-        raise RemiAPIError("Snooze not supported")
+        msg = "Snooze not supported"
+        raise RemiAPIError(msg)
 
     async def trigger_alarm(self, object_id: str, alarm_id: str) -> dict[str, Any]:
         """Manually trigger an alarm."""
@@ -429,11 +513,16 @@ class RemiAPI:
         alarm = next((a for a in alarms if a.get("objectId") == alarm_id), None)
 
         if not alarm:
-            raise RemiAPIError(f"Alarm {alarm_id} not found")
+            msg = f"Alarm {alarm_id} not found"
+            raise RemiAPIError(msg)
 
         # Apply alarm settings to the device
         if "face" in alarm:
-            face_id = alarm["face"].get("objectId") if isinstance(alarm["face"], dict) else alarm["face"]
+            face_id = (
+                alarm["face"].get("objectId")
+                if isinstance(alarm["face"], dict)
+                else alarm["face"]
+            )
             if face_id:
                 face_name = None
                 for name, fid in self.faces.items():

@@ -1,14 +1,19 @@
-from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN, BRAND_NAME, get_device_info
-from .coordinator import RemiCoordinator
 import logging
+
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
+from homeassistant.const import EntityCategory
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import BRAND_NAME, DOMAIN, get_device_info
+from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass, _config_entry, async_add_entities):
     """Set up binary sensors for Rémi devices."""
     api = hass.data[DOMAIN]["api"]
     devices = hass.data[DOMAIN]["devices"]
@@ -21,7 +26,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
-            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            _LOGGER.error(
+                "No coordinator found for device %s (%s)", device_name, device_id
+            )
             continue
 
         binary_sensors.append(RemiConnectivityBinarySensor(coordinator, api, device))

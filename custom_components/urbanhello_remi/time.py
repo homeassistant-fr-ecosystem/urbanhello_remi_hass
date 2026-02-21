@@ -1,8 +1,9 @@
 """Time platform for Rémi UrbanHello alarm clocks."""
+
 from __future__ import annotations
 
-from datetime import time
 import logging
+from datetime import time
 from typing import Any
 
 from homeassistant.components.time import TimeEntity
@@ -11,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, BRAND_NAME, get_device_info
+from .const import DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    _entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Rémi alarm clock time entities."""
@@ -34,7 +35,9 @@ async def async_setup_entry(
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
-            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            _LOGGER.error(
+                "No coordinator found for device %s (%s)", device_name, device_id
+            )
             continue
 
         # Get alarms from coordinator data
@@ -47,7 +50,7 @@ async def async_setup_entry(
         )
 
         # Create time entities for each alarm
-        for alarm_object_id, alarm_data in alarms_dict.items():
+        for alarm_object_id, _alarm_data in alarms_dict.items():
             entities.append(
                 RemiAlarmTime(
                     coordinator=coordinator,
@@ -139,7 +142,9 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
     @property
     def device_info(self):
         """Return device information."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device_data)
+        return get_device_info(
+            DOMAIN, self._device_id, self._device_name, self._device_data
+        )
 
     @property
     def icon(self) -> str:
@@ -224,7 +229,15 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
         days = alarm_data.get("days")
         if days is not None:
             # Convert day indices to day names
-            day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            day_names = [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+            ]
             selected_days = [day_names[i] for i in days if i < len(day_names)]
             attributes["days"] = selected_days
             attributes["days_indices"] = days

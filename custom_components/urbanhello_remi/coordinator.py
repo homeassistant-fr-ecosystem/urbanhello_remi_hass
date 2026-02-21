@@ -1,15 +1,13 @@
 """DataUpdateCoordinator for Remi device and alarm updates."""
+
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import RemiAPI, RemiAPIError
 
@@ -83,6 +81,8 @@ class RemiCoordinator(DataUpdateCoordinator):
             }
 
         except RemiAPIError as err:
-            raise UpdateFailed(f"Error fetching data for {self.device_name}: {err}") from err
+            msg = f"Error fetching data for {self.device_name}: {err}"
+            raise UpdateFailed(msg) from err
         except Exception as err:
-            raise UpdateFailed(f"Unexpected error fetching data for {self.device_name}: {err}") from err
+            msg = f"Unexpected error fetching data for {self.device_name}: {err}"
+            raise UpdateFailed(msg) from err

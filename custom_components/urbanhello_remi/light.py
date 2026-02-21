@@ -1,12 +1,19 @@
-from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN, BRAND_NAME, get_device_info
-from .coordinator import RemiCoordinator
 import logging
+
+from homeassistant.components.light import (  # type: ignore[attr-defined]
+    ATTR_BRIGHTNESS,
+    ColorMode,
+    LightEntity,
+)
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import BRAND_NAME, DOMAIN, get_device_info
+from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+
+async def async_setup_entry(hass, _config_entry, async_add_entities):
     """Set up Rémi lights based on a config entry."""
     api = hass.data[DOMAIN]["api"]
     devices = hass.data[DOMAIN]["devices"]
@@ -19,7 +26,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
-            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            _LOGGER.error(
+                "No coordinator found for device %s (%s)", device_name, device_id
+            )
             continue
 
         _LOGGER.debug("Setting up light for device: %s", device)
@@ -27,11 +36,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     async_add_entities(lights)
 
+
 class RemiNightLight(CoordinatorEntity, LightEntity):
     """Representation of a Rémi Night Light (brightness-only control)."""
 
     _attr_translation_key = "night_light"
-    _attr_supported_color_modes = {ColorMode.BRIGHTNESS}
     _attr_color_mode = ColorMode.BRIGHTNESS
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
@@ -44,6 +53,7 @@ class RemiNightLight(CoordinatorEntity, LightEntity):
 
         self._attr_name = f"{BRAND_NAME} {self._device_name} Night Light"
         self._attr_unique_id = f"{self._device_id}_night_light"
+        self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
 
     @property
     def device_info(self):
@@ -81,7 +91,9 @@ class RemiNightLight(CoordinatorEntity, LightEntity):
         api_brightness = min(int(brightness * 100 / 255), 100)
 
         await self._api.set_brightness(self._device_id, api_brightness)
-        _LOGGER.debug("Set Night Light brightness to %d for %s", api_brightness, self._attr_name)
+        _LOGGER.debug(
+            "Set Night Light brightness to %d for %s", api_brightness, self._attr_name
+        )
 
         # Request immediate refresh from coordinator
         await self.coordinator.async_request_refresh()

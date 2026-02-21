@@ -1,3 +1,5 @@
+import logging
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -5,14 +7,14 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass, _config_entry, async_add_entities):
     """Set up sensor entities for Rémi devices."""
     devices = hass.data[DOMAIN]["devices"]
     coordinators = hass.data[DOMAIN]["coordinators"]
@@ -24,7 +26,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
-            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            _LOGGER.error(
+                "No coordinator found for device %s (%s)", device_name, device_id
+            )
             continue
 
         sensors.append(RemiTemperatureSensor(coordinator, device))
@@ -63,5 +67,7 @@ class RemiTemperatureSensor(CoordinatorEntity, SensorEntity):
                 try:
                     return float(temp) / 10.0
                 except (ValueError, TypeError):
-                    _LOGGER.warning("Invalid temperature value received for %s: %s", self.name, temp)
+                    _LOGGER.warning(
+                        "Invalid temperature value received for %s: %s", self.name, temp
+                    )
         return None

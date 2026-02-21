@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 
 DOMAIN = "urbanhello_remi"
 MANUFACTURER = "UrbanHello"
@@ -53,5 +53,9 @@ def get_device_info(
         model=MODEL,
         sw_version=raw_data.get("current_firmware_version"),
         hw_version=raw_data.get("bt_hardware_version"),
-        connections={("ip", raw_data.get("ipv4Address"))} if raw_data.get("ipv4Address") else set(),
+        connections=(
+            {("ip", raw_data.get("ipv4Address"))}
+            if raw_data.get("ipv4Address")
+            else set()
+        ),
     )

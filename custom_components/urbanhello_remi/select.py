@@ -1,13 +1,21 @@
+import logging
+
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN, BRAND_NAME, get_device_info, FACE_MAP_API_TO_HA, FACE_MAP_HA_TO_API
+
+from .const import (
+    BRAND_NAME,
+    DOMAIN,
+    FACE_MAP_API_TO_HA,
+    FACE_MAP_HA_TO_API,
+    get_device_info,
+)
 from .coordinator import RemiCoordinator
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass, _config_entry, async_add_entities):
     """Set up select entities for Rémi devices."""
     api = hass.data[DOMAIN]["api"]
     devices = hass.data[DOMAIN]["devices"]
@@ -20,7 +28,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
-            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            _LOGGER.error(
+                "No coordinator found for device %s (%s)", device_name, device_id
+            )
             continue
 
         selects.append(RemiFaceSelect(coordinator, api, device))
@@ -66,7 +76,9 @@ class RemiFaceSelect(CoordinatorEntity, SelectEntity):
     def options(self):
         """Return the list of available faces."""
         if self._api.faces:
-            return sorted([FACE_MAP_API_TO_HA.get(name, name) for name in self._api.faces.keys()])
+            return sorted(
+                [FACE_MAP_API_TO_HA.get(name, name) for name in self._api.faces]
+            )
         return list(FACE_MAP_API_TO_HA.values())
 
     @property
@@ -79,18 +91,20 @@ class RemiFaceSelect(CoordinatorEntity, SelectEntity):
         face_lower = current_face.lower()
 
         # Map face names to appropriate icons
-        if "sleepy" in face_lower or "sleep" in face_lower:
-            return "mdi:sleep"
-        elif "awake" in face_lower:
-            return "mdi:emoticon-happy"
-        elif "blank" in face_lower:
-            return "mdi:emoticon-neutral"
-        elif "semiawake" in face_lower:
-            return "mdi:emoticon-cool"
-        elif "smily" in face_lower or "smile" in face_lower:
-            return "mdi:emoticon-happy-outline"
-        else:
-            return "mdi:emoticon-outline"
+        icons = {
+            "sleep": "mdi:sleep",
+            "awake": "mdi:emoticon-happy",
+            "blank": "mdi:emoticon-neutral",
+            "semi": "mdi:emoticon-cool",
+            "smily": "mdi:emoticon-happy-outline",
+            "smile": "mdi:emoticon-happy-outline",
+        }
+
+        for key, icon in icons.items():
+            if key in face_lower:
+                return icon
+
+        return "mdi:emoticon-outline"
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected face."""

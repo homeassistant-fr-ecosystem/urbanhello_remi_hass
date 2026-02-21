@@ -1,4 +1,5 @@
 """Switch platform for Rémi UrbanHello alarm clocks."""
+
 from __future__ import annotations
 
 import logging
@@ -10,14 +11,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, BRAND_NAME, get_device_info
+from .const import DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    _entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Rémi alarm clock switch entities."""
@@ -32,7 +34,9 @@ async def async_setup_entry(
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
-            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            _LOGGER.error(
+                "No coordinator found for device %s (%s)", device_name, device_id
+            )
             continue
 
         # Get alarms from coordinator data
@@ -45,7 +49,7 @@ async def async_setup_entry(
         )
 
         # Create switch entities for each alarm
-        for alarm_object_id, alarm_data in alarms_dict.items():
+        for alarm_object_id, _alarm_data in alarms_dict.items():
             entities.append(
                 RemiAlarmSwitch(
                     coordinator=coordinator,
@@ -124,7 +128,9 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def device_info(self):
         """Return device information."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device_data)
+        return get_device_info(
+            DOMAIN, self._device_id, self._device_name, self._device_data
+        )
 
     @property
     def icon(self) -> str:
@@ -133,7 +139,7 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
             return "mdi:alarm-check"
         return "mdi:alarm-off"
 
-    async def async_turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(self, **_kwargs: Any) -> None:
         """Turn the alarm clock on."""
         try:
             # Update via API
@@ -157,7 +163,7 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
             )
             raise
 
-    async def async_turn_off(self, **kwargs: Any) -> None:
+    async def async_turn_off(self, **_kwargs: Any) -> None:
         """Turn the alarm clock off."""
         try:
             # Update via API
@@ -227,7 +233,15 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
         days = alarm_data.get("days")
         if days is not None:
             # Convert day indices to day names
-            day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            day_names = [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+            ]
             selected_days = [day_names[i] for i in days if i < len(day_names)]
             attributes["days"] = selected_days
             attributes["days_indices"] = days

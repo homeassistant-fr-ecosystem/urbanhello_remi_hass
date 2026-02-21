@@ -1,0 +1,105 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urbanhello-remi-hass"
+version = "1.0.0"
+description = "Rémi UrbanHello Home Assistant integration"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Home Assistant French Ecosystem"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Home Automation",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass"
+Repository = "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass"
+
+# ============================================================================
+# Ruff Configuration
+# ============================================================================
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "EM",     # flake8-errmsg
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "PIE",    # flake8-pie
+    "PT",     # flake8-pytest-style
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "TID",    # flake8-tidy-imports
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "PL",     # pylint
+    "RUF",    # ruff-specific rules
+]
+
+ignore = [
+    "E501",    # line too long
+    "PLR0913", # too many arguments
+    "PLR2004", # magic value comparison
+    "ISC001",  # implicit string concatenation
+    "DTZ001",  # datetime without timezone
+    "DTZ005",  # datetime.now without timezone
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.urbanhello_remi"]
+combine-as-imports = true
+
+# ============================================================================
+# Mypy Configuration
+# ============================================================================
+[tool.mypy]
+python_version = "3.12"
+show_error_codes = true
+ignore_missing_imports = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+no_implicit_reexport = true
+warn_unreachable = true
+strict_equality = true
+exclude = ['tests/', '.venv/']
+
+[[tool.mypy.overrides]]
+module = "homeassistant.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "voluptuous.*"
+ignore_missing_imports = true

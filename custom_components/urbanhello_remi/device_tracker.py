@@ -1,15 +1,19 @@
-from homeassistant.components.device_tracker import SourceType
-from homeassistant.components.device_tracker.config_entry import ScannerEntity
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN, BRAND_NAME, get_device_info
-from .coordinator import RemiCoordinator
 import logging
+
+from homeassistant.components.device_tracker.config_entry import (
+    ScannerEntity,
+)
+from homeassistant.components.device_tracker.const import SourceType
+from homeassistant.const import EntityCategory
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import BRAND_NAME, DOMAIN, get_device_info
+from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass, _config_entry, async_add_entities):
     """Set up device tracker for Rémi devices."""
     api = hass.data[DOMAIN]["api"]
     devices = hass.data[DOMAIN]["devices"]
@@ -22,7 +26,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
-            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            _LOGGER.error(
+                "No coordinator found for device %s (%s)", device_name, device_id
+            )
             continue
 
         trackers.append(RemiDeviceTracker(coordinator, api, device))
@@ -47,11 +53,9 @@ class RemiDeviceTracker(CoordinatorEntity, ScannerEntity):
 
         self._attr_name = f"{BRAND_NAME} {self._device_name}"
         self._attr_unique_id = f"{self._device_id}_device_tracker"
-
-    @property
-    def device_info(self):
-        """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
+        self._attr_device_info = get_device_info(  # type: ignore[assignment]
+            DOMAIN, self._device_id, self._device_name, self._device
+        )
 
     @property
     def source_type(self):

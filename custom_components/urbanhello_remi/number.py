@@ -1,26 +1,30 @@
+import logging
+
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN, BRAND_NAME, get_device_info
+
+from .const import BRAND_NAME, DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass, _config_entry, async_add_entities):
     """Set up number entities for Rémi devices."""
     api = hass.data[DOMAIN]["api"]
     devices = hass.data[DOMAIN]["devices"]
     coordinators = hass.data[DOMAIN]["coordinators"]
 
-    numbers = []
+    numbers: list[NumberEntity] = []
     for device in devices:
         device_id = device["objectId"]
         device_name = device.get("name", "Rémi")
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
-            _LOGGER.error("No coordinator found for device %s (%s)", device_name, device_id)
+            _LOGGER.error(
+                "No coordinator found for device %s (%s)", device_name, device_id
+            )
             continue
 
         numbers.append(RemiVolumeNumber(coordinator, api, device))
@@ -69,12 +73,11 @@ class RemiVolumeNumber(CoordinatorEntity, NumberEntity):
         volume = self.native_value or 0
         if volume == 0:
             return "mdi:volume-off"
-        elif volume < 33:
+        if volume < 33:
             return "mdi:volume-low"
-        elif volume < 66:
+        if volume < 66:
             return "mdi:volume-medium"
-        else:
-            return "mdi:volume-high"
+        return "mdi:volume-high"
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the volume level."""
@@ -131,25 +134,28 @@ class RemiNoiseThresholdNumber(CoordinatorEntity, NumberEntity):
         threshold = self.native_value or 0
         if threshold == 0:
             return "mdi:volume-off"
-        elif threshold < 33:
+        if threshold < 33:
             return "mdi:volume-low"
-        elif threshold < 66:
+        if threshold < 66:
             return "mdi:volume-medium"
-        else:
-            return "mdi:volume-high"
+        return "mdi:volume-high"
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the noise threshold level."""
         try:
             threshold_int = int(value)
             await self._api.set_noise_threshold(self._device_id, threshold_int)
-            _LOGGER.debug("Set noise threshold to %d for %s", threshold_int, self._attr_name)
+            _LOGGER.debug(
+                "Set noise threshold to %d for %s", threshold_int, self._attr_name
+            )
 
             # Request immediate refresh from coordinator
             await self.coordinator.async_request_refresh()
 
         except Exception as e:
-            _LOGGER.error("Failed to set noise threshold for %s: %s", self._attr_name, e)
+            _LOGGER.error(
+                "Failed to set noise threshold for %s: %s", self._attr_name, e
+            )
             raise
 
 
@@ -192,23 +198,26 @@ class RemiNightFaceLevel(CoordinatorEntity, NumberEntity):
         level = self.native_value or 0
         if level == 0:
             return "mdi:brightness-1"
-        elif level < 33:
+        if level < 33:
             return "mdi:brightness-4"
-        elif level < 66:
+        if level < 66:
             return "mdi:brightness-5"
-        else:
-            return "mdi:brightness-6"
+        return "mdi:brightness-6"
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the night face level."""
         try:
             level_int = int(value)
             await self._api.set_night_luminosity(self._device_id, level_int)
-            _LOGGER.debug("Set night face level to %d for %s", level_int, self._attr_name)
+            _LOGGER.debug(
+                "Set night face level to %d for %s", level_int, self._attr_name
+            )
 
             # Request immediate refresh from coordinator
             await self.coordinator.async_request_refresh()
 
         except Exception as e:
-            _LOGGER.error("Failed to set night face level for %s: %s", self._attr_name, e)
+            _LOGGER.error(
+                "Failed to set night face level for %s: %s", self._attr_name, e
+            )
             raise
