@@ -6,11 +6,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
-    EntityCategory,
-    UnitOfIlluminance,
-    UnitOfSignalStrength,
-    UnitOfTemperature,
-)
+    EntityCategory, 
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    UnitOfTemperature
+) 
+
+LIGHT_LUX = "lx"
+
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, get_device_info
@@ -88,7 +90,7 @@ class RemiLuminositySensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.ILLUMINANCE
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_native_unit_of_measurement = UnitOfIlluminance.LUX
+    _attr_native_unit_of_measurement = LIGHT_LUX
     _attr_translation_key = "luminosity"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -143,7 +145,7 @@ class RemiRssiSensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_native_unit_of_measurement = UnitOfSignalStrength.DECIBELS_MILLIWATT
+    _attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
     _attr_translation_key = "rssi"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_entity_registry_enabled_default = False
