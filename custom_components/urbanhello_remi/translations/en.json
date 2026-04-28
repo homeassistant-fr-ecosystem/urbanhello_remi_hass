@@ -42,11 +42,29 @@
       },
       "alarm_data": {
         "name": "Alarm Data"
+      },
+      "luminosity": {
+        "name": "Ambient Light"
+      },
+      "firmware_version": {
+        "name": "Firmware Version"
+      },
+      "rssi": {
+        "name": "Signal Strength (RSSI)"
+      },
+      "ip_address": {
+        "name": "IP Address"
       }
     },
     "binary_sensor": {
       "connectivity": {
         "name": "Connectivity"
+      },
+      "alive": {
+        "name": "Alive"
+      },
+      "firmware_update": {
+        "name": "Firmware Update Available"
       }
     },
     "number": {
@@ -72,6 +90,21 @@
           "blank_face": "Blank",
           "semi_awake_face": "Semi-Awake",
           "smily_face": "Smiley"
+        }
+      },
+      "clock_format": {
+        "name": "Clock Format",
+        "state": {
+          "12h": "12h",
+          "24h": "24h"
+        }
+      },
+      "music_mode": {
+        "name": "Music Mode",
+        "state": {
+          "off": "Off",
+          "music": "Music",
+          "white_noise": "White Noise"
         }
       }
     },

@@ -222,6 +222,8 @@ class RemiAPI:
             "face": data.get("face", {}).get("objectId") if data.get("face") else None,
             "volume": data.get("volume"),
             "light_min": data.get("light_min"),
+            "hour_format_24": data.get("hourFormat24"),
+            "music_mode": data.get("musicMode"),
             "raw": data,
         }
 
@@ -254,6 +256,14 @@ class RemiAPI:
     async def set_noise_threshold(self, object_id: str, threshold: int) -> Any:
         """Set the noise threshold."""
         return await self._update_remi(object_id, {"noise_threshold": threshold})
+
+    async def set_clock_format(self, object_id: str, use_24h: bool) -> Any:
+        """Set the clock display format (True = 24h, False = 12h)."""
+        return await self._update_remi(object_id, {"hourFormat24": use_24h})
+
+    async def set_music_mode(self, object_id: str, mode: int) -> Any:
+        """Set the music mode (0=Off, 1=Music, 2=White Noise)."""
+        return await self._update_remi(object_id, {"musicMode": mode})
 
     async def turn_on(self, object_id: str) -> Any:
         """Turn on."""

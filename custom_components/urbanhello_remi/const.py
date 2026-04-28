@@ -20,6 +20,13 @@ FACE_MAP_API_TO_HA = {
 
 FACE_MAP_HA_TO_API = {v: k for k, v in FACE_MAP_API_TO_HA.items()}
 
+# Music mode options: API integer value -> display label
+MUSIC_MODE_OPTIONS: dict[int, str] = {
+    0: "off",
+    1: "music",
+    2: "white_noise",
+}
+
 # Alarm clock constants
 MAX_ALARMS_PER_DEVICE = 3
 DEFAULT_ALARM_HOUR = 7

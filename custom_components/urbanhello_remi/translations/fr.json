@@ -35,11 +35,49 @@
       },
       "face": {
         "name": "Visage"
+      },
+      "luminosity": {
+        "name": "Luminosité ambiante"
+      },
+      "firmware_version": {
+        "name": "Version du firmware"
+      },
+      "rssi": {
+        "name": "Force du signal (RSSI)"
+      },
+      "ip_address": {
+        "name": "Adresse IP"
+      }
+    },
+    "binary_sensor": {
+      "connectivity": {
+        "name": "Connectivité"
+      },
+      "alive": {
+        "name": "En vie"
+      },
+      "firmware_update": {
+        "name": "Mise à jour firmware disponible"
       }
     },
     "select": {
       "face": {
         "name": "Visage"
+      },
+      "clock_format": {
+        "name": "Format de l'heure",
+        "state": {
+          "12h": "12h",
+          "24h": "24h"
+        }
+      },
+      "music_mode": {
+        "name": "Mode musical",
+        "state": {
+          "off": "Désactivé",
+          "music": "Musique",
+          "white_noise": "Bruit blanc"
+        }
       }
     }
   },

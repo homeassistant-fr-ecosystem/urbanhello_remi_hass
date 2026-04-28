@@ -32,6 +32,8 @@ async def async_setup_entry(hass, _config_entry, async_add_entities):
             continue
 
         binary_sensors.append(RemiConnectivityBinarySensor(coordinator, api, device))
+        binary_sensors.append(RemiAliveBinarySensor(coordinator, device))
+        binary_sensors.append(RemiFirmwareUpdateBinarySensor(coordinator, device))
 
     async_add_entities(binary_sensors)
 
@@ -81,3 +83,78 @@ class RemiConnectivityBinarySensor(CoordinatorEntity, BinarySensorEntity):
         return {
             "online": self.is_on,
         }
+
+
+class RemiAliveBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Representation of a Rémi alive binary sensor."""
+
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_translation_key = "alive"
+
+    def __init__(self, coordinator: RemiCoordinator, device):
+        super().__init__(coordinator)
+        self._device = device
+        self._device_name = device.get("name", "Rémi")
+        self._device_id = device["objectId"]
+        self._attr_unique_id = f"{self._device_id}_alive"
+
+    @property
+    def device_info(self):
+        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
+
+    @property
+    def is_on(self):
+        if self.coordinator.data and "device_info" in self.coordinator.data:
+            raw = self.coordinator.data["device_info"].get("raw", {})
+            alive = raw.get("alive")
+            return bool(alive) if alive is not None else False
+        return False
+
+    @property
+    def available(self):
+        return self.coordinator.last_update_success
+
+
+class RemiFirmwareUpdateBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Binary sensor that indicates whether a firmware update is available."""
+
+    _attr_device_class = BinarySensorDeviceClass.UPDATE
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "firmware_update"
+
+    def __init__(self, coordinator: RemiCoordinator, device):
+        super().__init__(coordinator)
+        self._device = device
+        self._device_name = device.get("name", "Rémi")
+        self._device_id = device["objectId"]
+        self._attr_unique_id = f"{self._device_id}_firmware_update"
+
+    @property
+    def device_info(self):
+        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
+
+    @property
+    def is_on(self):
+        if self.coordinator.data and "device_info" in self.coordinator.data:
+            raw = self.coordinator.data["device_info"].get("raw", {})
+            current = raw.get("current_firmware_version")
+            latest = raw.get("latest_firmware_version")
+            if current and latest:
+                return current != latest
+        return False
+
+    @property
+    def available(self):
+        return self.coordinator.last_update_success
+
+    @property
+    def extra_state_attributes(self):
+        if self.coordinator.data and "device_info" in self.coordinator.data:
+            raw = self.coordinator.data["device_info"].get("raw", {})
+            return {
+                "current_version": raw.get("current_firmware_version"),
+                "latest_version": raw.get("latest_firmware_version"),
+            }
+        return {}
