@@ -11,7 +11,7 @@ This integration allows you to control and monitor your Rémi UrbanHello device 
 
 ### Multilingual Support
 
-This integration includes built-in translations for:
+Built-in translations for:
 - **English** (en)
 - **French** (fr)
 
@@ -20,7 +20,7 @@ Face names and entity names are automatically translated based on your Home Assi
 ### Alarm Management
 
 Manage your Rémi alarms directly from Home Assistant:
-- **View Alarms**: Each alarm is represented as a switch entity.
+- **View Alarms**: Each alarm is represented as a switch entity and a time entity.
 - **Control Alarms**: Enable/disable alarms using the switch.
 - **Edit Alarms**: Change alarm time and active days using dedicated services.
 - **Custom Services**: Create, delete, update, trigger, and snooze alarms.
@@ -30,37 +30,40 @@ Manage your Rémi alarms directly from Home Assistant:
 For each Rémi device, the following entities are created:
 
 #### Light
-- **Rémi [Device Name]**: Main nightlight control with brightness adjustment (0-100%)
-  - Uses "sleepy_face" when on, "awake_face" when off
-  - Full brightness control
+- **Night Light**: Nightlight brightness control (0-100%)
 
 #### Sensors
 - **Temperature**: Current room temperature in °C
-- **Face**: Current face displayed on the device
-- **RSSI**: WiFi signal strength (diagnostic sensor, dBm)
+- **Ambient Light**: Ambient luminosity in lux (diagnostic)
+- **Firmware Version**: Current device firmware version (diagnostic)
+- **Signal Strength (RSSI)**: WiFi signal strength in dBm (diagnostic, disabled by default)
+- **IP Address**: Device IPv4 address (diagnostic, disabled by default)
 
 #### Binary Sensors
-- **Connectivity**: Device online/offline status (diagnostic sensor)
+- **Firmware Update Available**: Indicates when a firmware update is available
+- **Connectivity**: Device online/offline status (diagnostic, disabled by default)
+- **Alive**: Device running status (diagnostic, disabled by default)
 
 #### Numbers
 - **Volume**: Control device volume (0-100%)
-- **Night Light Level**: Set minimum brightness for night light (0-100%)
-- **Night Face Level**: Set brightness for the face display during night (0-100%)
-- **Noise Threshold**: Set the noise notification threshold
+- **Night Light Level**: Minimum brightness for the nightlight (0-100%)
+- **Night Face Level**: Face display brightness during night mode (0-100%)
+- **Noise Threshold**: Noise notification trigger level (0-100%)
 
 #### Select
 - **Face**: Choose which face to display on the device
-  - Options: sleepy_face, awake_face, blank_face, semi_awake_face, smily_face
-  - Face names are automatically translated to your language
+  - Options: Sleepy, Awake, Blank, Semi-Awake, Smiley
+- **Clock Format**: 12h or 24h time display
+- **Music Mode**: Off, Music, or White Noise
 
 #### Time
-- **Alarm Time**: View and set the time for each of the 3 supported alarms.
+- **Alarm 1/2/3 Time**: View and set the time for each alarm.
 
 #### Switch
-- **Alarm**: Enable or disable each of the 3 supported alarms.
+- **Alarm 1/2/3**: Enable or disable each alarm.
 
 #### Device Tracker
-- **Network Status**: Track device IP address and connection status (diagnostic)
+- **Network Status**: Track device connection status (diagnostic, disabled by default)
 
 ## Installation
 
@@ -92,11 +95,13 @@ For each Rémi device, the following entities are created:
 
 The integration provides several services for advanced alarm management:
 
-- **urbanhello_remi.create_alarm**: Create a new alarm.
-- **urbanhello_remi.delete_alarm**: Delete an existing alarm.
-- **urbanhello_remi.update_alarm**: Update alarm settings (time, days, enabled, face, brightness).
-- **urbanhello_remi.trigger_alarm**: Manually trigger an alarm.
-- **urbanhello_remi.snooze_alarm**: Snooze a currently active alarm.
+| Service | Description |
+|---|---|
+| `urbanhello_remi.create_alarm` | Create a new alarm (time, name, days, enabled) |
+| `urbanhello_remi.delete_alarm` | Delete an existing alarm by ID |
+| `urbanhello_remi.update_alarm` | Update alarm settings (time, days, enabled, face, brightness) |
+| `urbanhello_remi.trigger_alarm` | Manually trigger an alarm |
+| `urbanhello_remi.snooze_alarm` | Snooze a currently active alarm (default: 9 min) |
 
 ## Usage Examples
 
@@ -112,7 +117,7 @@ automation:
     action:
       - service: light.turn_on
         target:
-          entity_id: light.remi_baby_room
+          entity_id: light.remi_baby_room_night_light
         data:
           brightness_pct: 30
       - service: select.select_option
@@ -120,6 +125,31 @@ automation:
           entity_id: select.remi_baby_room_face
         data:
           option: "sleepy_face"
+      - service: select.select_option
+        target:
+          entity_id: select.remi_baby_room_music_mode
+        data:
+          option: "white_noise"
+```
+
+#### Wake Up Routine
+```yaml
+automation:
+  - alias: "Baby Wake Up"
+    trigger:
+      - platform: time
+        at: "07:00:00"
+    action:
+      - service: select.select_option
+        target:
+          entity_id: select.remi_baby_room_face
+        data:
+          option: "awake_face"
+      - service: select.select_option
+        target:
+          entity_id: select.remi_baby_room_music_mode
+        data:
+          option: "off"
 ```
 
 ## Update Interval
@@ -130,15 +160,11 @@ All entities update every 1 minute by default. This can be customized in the int
 
 - **Issues**: [GitHub Issues](https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass/issues)
 
-## Credit
+## Credits
 
 This integration is maintained by the [Home Assistant French Ecosystem](https://github.com/homeassistant-fr-ecosystem).
 Based on original work by [@pdruart](https://github.com/pdruart).
 
-## License
-
-This project is not affiliated with, endorsed by, or connected to UrbanHello in any way.
-
 ## Disclaimer
 
-This is an unofficial integration. Use at your own risk.
+This is an unofficial integration, not affiliated with, endorsed by, or connected to UrbanHello in any way. Use at your own risk.
