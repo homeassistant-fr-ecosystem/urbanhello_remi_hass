@@ -59,7 +59,11 @@ def get_device_info(
         manufacturer=MANUFACTURER,
         model=MODEL,
         sw_version=raw_data.get("current_firmware_version"),
-        hw_version=raw_data.get("bt_hardware_version"),
+        hw_version=(
+            str(raw_data["bt_hardware_version"])
+            if raw_data.get("bt_hardware_version") is not None
+            else None
+        ),
         connections=(
             {("ip", raw_data.get("ipv4Address"))}
             if raw_data.get("ipv4Address")
