@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from custom_components.urbanhello_remi_hass.const import DOMAIN
+from custom_components.urbanhello_remi.const import DOMAIN
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.core import HomeAssistant
 
@@ -16,7 +16,7 @@ async def test_flow_user(hass: HomeAssistant) -> None:
     assert result["step_id"] == "user"
 
     with patch(
-        "custom_components.urbanhello_remi_hass.api.RemiAPI.login",
+        "urbanhello_remi_api.RemiAPI.login",
         return_value={"sessionToken": "test_token"},
     ):
         result = await hass.config_entries.flow.async_configure(
