@@ -11,7 +11,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import RemiAPI, RemiAPIAuthError, RemiAPIError
+from urbanhello_remi_api import RemiAPI, RemiAPIAuthError, RemiAPIError
 from .const import (
     DOMAIN,
     SERVICE_CREATE_ALARM,

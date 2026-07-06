@@ -8,7 +8,7 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import callback
 
-from .api import RemiAPI
+from urbanhello_remi_api import RemiAPI
 
 _LOGGER = logging.getLogger(__name__)
 

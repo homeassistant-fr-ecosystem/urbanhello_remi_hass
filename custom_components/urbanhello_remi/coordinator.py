@@ -9,7 +9,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import RemiAPI, RemiAPIError
+from urbanhello_remi_api import RemiAPI, RemiAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
