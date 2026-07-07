@@ -6,17 +6,16 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
-    EntityCategory, 
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-    UnitOfTemperature
-) 
-
-LIGHT_LUX = "lx"
-
+    EntityCategory,
+    UnitOfTemperature,
+)
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
+
+LIGHT_LUX = "lx"
 
 _LOGGER = logging.getLogger(__name__)
 
