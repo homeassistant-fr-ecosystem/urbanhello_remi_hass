@@ -2,9 +2,10 @@
 
 from unittest.mock import patch
 
-from custom_components.urbanhello_remi.const import DOMAIN
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.core import HomeAssistant
+
+from custom_components.urbanhello_remi.const import DOMAIN
 
 
 async def test_flow_user(hass: HomeAssistant) -> None:

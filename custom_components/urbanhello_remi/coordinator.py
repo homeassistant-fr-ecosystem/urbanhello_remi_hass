@@ -8,7 +8,6 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
 from urbanhello_remi_api import RemiAPI, RemiAPIError
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,12 +57,27 @@ class RemiCoordinator(DataUpdateCoordinator):
             # Fetch fresh alarm data from API
             alarms = await self.api.get_alarms(self.device_id, refresh=True)
 
-            # Convert list of alarms to dictionary keyed by objectId
+            # Convert list of Alarm dataclasses to a dict-shaped structure
+            # keyed by objectId, for HA platform compatibility (see get_remi_info).
             alarm_dict = {}
             for alarm in alarms:
-                alarm_id = alarm.get("objectId")
+                alarm_id = alarm.object_id
                 if alarm_id:
-                    alarm_dict[alarm_id] = alarm
+                    alarm_dict[alarm_id] = {
+                        "name": alarm.name,
+                        "time": alarm.time,
+                        "enabled": alarm.enabled,
+                        "days": alarm.days,
+                        "recurrence": alarm.recurrence,
+                        "brightness": alarm.brightness,
+                        "volume": alarm.volume,
+                        "cmd": alarm.cmd,
+                        "length_min": alarm.length_min,
+                        "face": (
+                            {"objectId": alarm.face.object_id} if alarm.face else None
+                        ),
+                        "lightnight": alarm.lightnight,
+                    }
 
             _LOGGER.debug(
                 "Updated data for device %s (%s): %d alarms, temp=%s, face=%s",

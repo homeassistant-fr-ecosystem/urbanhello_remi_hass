@@ -1,3 +1,7 @@
+# Rémi API client (sibling project, not yet published to PyPI — install from
+# the local checkout with: pip install -e ../urbanhello-remi-api)
+-e ../urbanhello-remi-api
+
 # Testing
 pytest>=7.4.0
 pytest-asyncio>=0.21.0

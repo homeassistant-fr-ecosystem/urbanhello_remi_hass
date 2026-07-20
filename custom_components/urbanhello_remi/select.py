@@ -114,7 +114,7 @@ class RemiFaceSelect(CoordinatorEntity, SelectEntity):
         """Change the selected face."""
         try:
             api_option = FACE_MAP_HA_TO_API.get(option, option)
-            await self._api.set_face_by_name(self._device_id, api_option)
+            await self._api.set_face(self._device_id, api_option)
             _LOGGER.info("Changed face to %s for %s", option, self._attr_name)
 
             # Request immediate refresh from coordinator

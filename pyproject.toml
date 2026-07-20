@@ -19,6 +19,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+dependencies = [
+    "urbanhello-remi-api==0.1.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass"
@@ -103,3 +106,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "voluptuous.*"
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
