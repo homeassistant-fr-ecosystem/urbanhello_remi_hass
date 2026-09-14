@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -128,7 +129,7 @@ class RemiClockFormatSelect(CoordinatorEntity, SelectEntity):
     """Select entity to choose 12h or 24h clock display format."""
 
     _attr_translation_key = "clock_format"
-    _attr_options = ["12h", "24h"]
+    _attr_options: ClassVar[list[str]] = ["12h", "24h"]
     _attr_icon = "mdi:clock-outline"
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
