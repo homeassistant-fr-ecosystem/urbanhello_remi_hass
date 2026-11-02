@@ -339,17 +339,16 @@ class RemiAPI:
         if not refresh and object_id in self.alarms:
             return self.alarms[object_id]
 
-        alarms: list[dict[str, Any]] = []
-        try:
-            where = {"remi": self._pointer("Remi", object_id)}
-            result = await self._request("GET", "/classes/Event", json={"where": where})
-            if isinstance(result, dict) and "results" in result:
-                for event in result.get("results", []):
-                    alarm = self._convert_event_to_alarm(event, object_id)
-                    if alarm:
-                        alarms.append(alarm)
-        except RemiAPIError as e:
-            _LOGGER.warning("Failed to get events: %s", e)
+        where = {"remi": self._pointer("Remi", object_id)}
+        result = await self._request("GET", "/classes/Event", json={"where": where})
+        if isinstance(result, dict) and "results" in result:
+            alarms = []
+            for event in result.get("results", []):
+                alarm = self._convert_event_to_alarm(event, object_id)
+                if alarm:
+                    alarms.append(alarm)
+        else:
+            alarms = []
 
         self.alarms[object_id] = alarms
         return alarms

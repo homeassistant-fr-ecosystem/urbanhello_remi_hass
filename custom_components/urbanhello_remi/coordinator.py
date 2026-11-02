@@ -6,12 +6,17 @@ import logging
 from datetime import timedelta
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import RemiAPI, RemiAPIError
+from .api import RemiAPI, RemiAPIAuthError, RemiAPIError
 
 _LOGGER = logging.getLogger(__name__)
+
+# RemiConfigEntry type alias (Python 3.12+ syntax would be: type RemiConfigEntry = ConfigEntry[Any])
+RemiConfigEntry = ConfigEntry
 
 
 class RemiCoordinator(DataUpdateCoordinator):
@@ -24,6 +29,7 @@ class RemiCoordinator(DataUpdateCoordinator):
         device_id: str,
         device_name: str,
         update_interval: int = 60,
+        entry: RemiConfigEntry | None = None,
     ) -> None:
         """Initialize the coordinator.
 
@@ -33,6 +39,7 @@ class RemiCoordinator(DataUpdateCoordinator):
             device_id: The Remi device objectId
             device_name: Human-readable device name
             update_interval: Update interval in seconds
+            entry: Config entry for proper shutdown handling
         """
         self.api = api
         self.device_id = device_id
@@ -43,6 +50,7 @@ class RemiCoordinator(DataUpdateCoordinator):
             _LOGGER,
             name=f"Remi {device_name}",
             update_interval=timedelta(seconds=update_interval),
+            config_entry=entry,
         )
 
     async def _async_update_data(self) -> dict[str, Any]:
@@ -80,6 +88,9 @@ class RemiCoordinator(DataUpdateCoordinator):
                 "alarms": alarm_dict,
             }
 
+        except RemiAPIAuthError as err:
+            # This will trigger HA's reauth flow
+            raise ConfigEntryAuthFailed from err
         except RemiAPIError as err:
             msg = f"Error fetching data for {self.device_name}: {err}"
             raise UpdateFailed(msg) from err

@@ -26,14 +26,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    _entry: ConfigEntry,
+    _hass: HomeAssistant,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Rémi alarm clock time entities."""
-    api = hass.data[DOMAIN]["api"]
-    devices = hass.data[DOMAIN]["devices"]
-    coordinators = hass.data[DOMAIN]["coordinators"]
+    api = entry.runtime_data.api
+    devices = entry.runtime_data.devices
+    coordinators = entry.runtime_data.coordinators
 
     entities = []
     for device in devices:

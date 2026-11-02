@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from homeassistant.components.number import NumberEntity, NumberMode
@@ -9,11 +11,11 @@ from .coordinator import RemiCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, _config_entry, async_add_entities):
+async def async_setup_entry(_hass, entry, async_add_entities):
     """Set up number entities for Rémi devices."""
-    api = hass.data[DOMAIN]["api"]
-    devices = hass.data[DOMAIN]["devices"]
-    coordinators = hass.data[DOMAIN]["coordinators"]
+    api = entry.runtime_data.api
+    devices = entry.runtime_data.devices
+    coordinators = entry.runtime_data.coordinators
 
     numbers: list[NumberEntity] = []
     for device in devices:

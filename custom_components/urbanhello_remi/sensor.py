@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from homeassistant.components.sensor import (
@@ -20,10 +22,10 @@ LIGHT_LUX = "lx"
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, _config_entry, async_add_entities):
+async def async_setup_entry(_hass, entry, async_add_entities):
     """Set up sensor entities for Rémi devices."""
-    devices = hass.data[DOMAIN]["devices"]
-    coordinators = hass.data[DOMAIN]["coordinators"]
+    devices = entry.runtime_data.devices
+    coordinators = entry.runtime_data.coordinators
 
     sensors = []
     for device in devices:

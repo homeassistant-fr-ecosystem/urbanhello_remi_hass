@@ -7,8 +7,9 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import RemiAPI
+from .api import RemiAPI, RemiAPIAuthError, RemiAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,19 +36,25 @@ class RemiConfigFlow(config_entries.ConfigFlow, domain="urbanhello_remi"):
             self._abort_if_unique_id_configured()
 
             try:
-                api = RemiAPI(user_input["username"], user_input["password"])
+                api = RemiAPI(
+                    user_input["username"],
+                    user_input["password"],
+                    session=async_get_clientsession(self.hass),
+                )
                 await api.login()
                 return self.async_create_entry(
                     title=f"Rémi ({user_input['username']})",
                     data=user_input,
                 )
+            except RemiAPIAuthError as e:
+                _LOGGER.debug("Authentication failed: %s", e)
+                errors["base"] = "auth_failed"
+            except RemiAPIError as e:
+                _LOGGER.debug("Cannot connect: %s", e)
+                errors["base"] = "cannot_connect"
             except Exception as e:
                 _LOGGER.error("Unexpected error during login: %s", e)
-                error_str = str(e).lower()
-                if "401" in error_str or "auth" in error_str or "login" in error_str:
-                    errors["base"] = "auth_failed"
-                else:
-                    errors["base"] = "cannot_connect"
+                errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
@@ -64,7 +71,11 @@ class RemiConfigFlow(config_entries.ConfigFlow, domain="urbanhello_remi"):
         errors = {}
         if user_input is not None:
             try:
-                api = RemiAPI(user_input["username"], user_input["password"])
+                api = RemiAPI(
+                    user_input["username"],
+                    user_input["password"],
+                    session=async_get_clientsession(self.hass),
+                )
                 await api.login()
 
                 entry = self.hass.config_entries.async_get_entry(
@@ -77,9 +88,15 @@ class RemiConfigFlow(config_entries.ConfigFlow, domain="urbanhello_remi"):
                     )
                     await self.hass.config_entries.async_reload(entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
+            except RemiAPIAuthError as e:
+                _LOGGER.debug("Re-authentication failed: %s", e)
+                errors["base"] = "auth_failed"
+            except RemiAPIError as e:
+                _LOGGER.debug("Re-authentication connection error: %s", e)
+                errors["base"] = "cannot_connect"
             except Exception as e:
                 _LOGGER.error("Re-authentication failed: %s", e)
-                errors["base"] = "auth_failed"
+                errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="reauth_confirm", data_schema=DATA_SCHEMA, errors=errors
