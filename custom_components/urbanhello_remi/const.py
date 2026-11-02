@@ -120,3 +120,32 @@ def build_alarm_unique_id(
     """Return the unique_id of an alarm entity."""
     key = build_alarm_key(alarm_object_id, alarm_name, alarms)
     return f"{device_id}_alarm_{key}_{suffix}"
+
+
+def find_alarm(
+    alarms: dict[str, Any],
+    alarm_object_id: str | None,
+    alarm_key: str,
+) -> tuple[str | None, dict[str, Any]]:
+    """Locate an alarm in the latest coordinator payload.
+
+    Parse regenerates the ``objectId`` of an ``Event`` when the Rémi is
+    re-registered (unplugged/plugged back in) or when the alarm is edited from
+    the UrbanHello app. Entities keep the id they were created with, so fall
+    back to the stable name-based key to follow the alarm instead of showing
+    stale values and failing writes.
+
+    Returns the current objectId (or ``None`` when the alarm is gone) and its
+    data.
+    """
+    if alarm_object_id is not None:
+        data = alarms.get(alarm_object_id)
+        if data is not None:
+            return alarm_object_id, data
+
+    for object_id, raw_alarm in alarms.items():
+        candidate = raw_alarm or {}
+        if build_alarm_key(object_id, candidate.get("name"), alarms) == alarm_key:
+            return object_id, candidate
+
+    return None, {}

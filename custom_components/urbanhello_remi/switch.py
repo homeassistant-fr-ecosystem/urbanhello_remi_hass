@@ -8,10 +8,17 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, build_alarm_unique_id, get_device_info
+from .const import (
+    DOMAIN,
+    build_alarm_key,
+    build_alarm_unique_id,
+    find_alarm,
+    get_device_info,
+)
 from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,14 +93,15 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
         self._device_data = device_data
         self._alarm_object_id = alarm_object_id
 
-        # Set entity attributes with correct objectId-based unique_id
+        # Set entity attributes with a stable, name-based unique_id
         # Entity naming must match remi-card expectations:
         # remi-card looks for time.{device_name}_* and expects matching switch.{device_name}_*
         alarms = coordinator.data.get("alarms", {}) if coordinator.data else {}
         alarm_data = alarms.get(alarm_object_id, {})
         alarm_name = alarm_data.get("name", "Alarm")
+        self._alarm_key = build_alarm_key(alarm_object_id, alarm_data.get("name"), alarms)
 
-        # Use alarm name for entity_id, objectId for unique_id
+        # Use alarm name for entity_id, stable key for unique_id
         alarm_name_slug = alarm_name.lower().replace(" ", "_")
 
         self._attr_name = f"{device_name} {alarm_name}"
@@ -102,12 +110,33 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
         )
         self._attr_suggested_object_id = f"{device_name.lower()}_{alarm_name_slug}"
 
+    def _resolve_alarm(self) -> tuple[str | None, dict[str, Any]]:
+        """Return the current objectId and data of this alarm."""
+        data = self.coordinator.data or {}
+        alarms = data.get("alarms", {})
+        return find_alarm(alarms, self._alarm_object_id, self._alarm_key)
+
     @property
-    def alarm_data(self) -> dict:
+    def alarm_object_id(self) -> str | None:
+        """Return the alarm's current objectId, or None when it is gone."""
+        object_id, _ = self._resolve_alarm()
+        if object_id is not None:
+            self._alarm_object_id = object_id
+        return object_id
+
+    @property
+    def alarm_data(self) -> dict[str, Any]:
         """Get current alarm data from coordinator."""
-        if self.coordinator.data and "alarms" in self.coordinator.data:
-            return self.coordinator.data["alarms"].get(self._alarm_object_id, {})
-        return {}
+        _, data = self._resolve_alarm()
+        return data
+
+    def _require_alarm_id(self) -> str:
+        """Return the current objectId, or fail the action if the alarm is gone."""
+        object_id = self.alarm_object_id
+        if object_id is None:
+            msg = f"Alarm '{self._attr_name}' no longer exists on the device"
+            raise HomeAssistantError(msg)
+        return object_id
 
     @property
     def is_on(self) -> bool:
@@ -122,7 +151,7 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
         _LOGGER.info(
             "Initialized alarm switch '%s' (objectId: %s) for device %s - State: %s",
             alarm_name,
-            self._alarm_object_id,
+            self.alarm_object_id,
             self._device_id,
             "enabled" if self.is_on else "disabled",
         )
@@ -143,14 +172,15 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_on(self, **_kwargs: Any) -> None:
         """Turn the alarm clock on."""
+        object_id = self._require_alarm_id()
         try:
             # Update via API
-            await self._api.enable_alarm(self._device_id, self._alarm_object_id)
+            await self._api.enable_alarm(self._device_id, object_id)
 
             _LOGGER.info(
                 "Enabled alarm '%s' (objectId: %s) for device %s",
                 self.alarm_data.get("name", "Alarm"),
-                self._alarm_object_id,
+                object_id,
                 self._device_id,
             )
 
@@ -160,21 +190,22 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
         except Exception as e:
             _LOGGER.error(
                 "Failed to enable alarm %s: %s",
-                self._alarm_object_id,
+                object_id,
                 e,
             )
             raise
 
     async def async_turn_off(self, **_kwargs: Any) -> None:
         """Turn the alarm clock off."""
+        object_id = self._require_alarm_id()
         try:
             # Update via API
-            await self._api.disable_alarm(self._device_id, self._alarm_object_id)
+            await self._api.disable_alarm(self._device_id, object_id)
 
             _LOGGER.info(
                 "Disabled alarm '%s' (objectId: %s) for device %s",
                 self.alarm_data.get("name", "Alarm"),
-                self._alarm_object_id,
+                object_id,
                 self._device_id,
             )
 
@@ -184,7 +215,7 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
         except Exception as e:
             _LOGGER.error(
                 "Failed to disable alarm %s: %s",
-                self._alarm_object_id,
+                object_id,
                 e,
             )
             raise
@@ -192,7 +223,7 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return True
+        return super().available and self.alarm_object_id is not None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -204,8 +235,8 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
         if alarm_name is not None:
             attributes["name"] = alarm_name
 
-        if self._alarm_object_id is not None:
-            attributes["alarm_id"] = self._alarm_object_id
+        if self.alarm_object_id is not None:
+            attributes["alarm_id"] = self.alarm_object_id
 
         brightness = alarm_data.get("brightness")
         if brightness is not None:

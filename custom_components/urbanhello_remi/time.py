@@ -9,10 +9,17 @@ from typing import Any
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, build_alarm_unique_id, get_device_info
+from .const import (
+    DOMAIN,
+    build_alarm_key,
+    build_alarm_unique_id,
+    find_alarm,
+    get_device_info,
+)
 from .coordinator import RemiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -87,13 +94,14 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
         self._device_data = device_data
         self._alarm_object_id = alarm_object_id
 
-        # Set entity attributes with correct objectId-based unique_id
+        # Set entity attributes with a stable, name-based unique_id
         # Entity naming must match remi-card expectations and switch entities
         alarms = coordinator.data.get("alarms", {}) if coordinator.data else {}
         alarm_data = alarms.get(alarm_object_id, {})
         alarm_name = alarm_data.get("name", "Alarm")
+        self._alarm_key = build_alarm_key(alarm_object_id, alarm_data.get("name"), alarms)
 
-        # Use alarm name for entity_id, objectId for unique_id
+        # Use alarm name for entity_id, stable key for unique_id
         alarm_name_slug = alarm_name.lower().replace(" ", "_")
 
         self._attr_name = f"{device_name} {alarm_name}"
@@ -102,12 +110,33 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
         )
         self._attr_suggested_object_id = f"{device_name.lower()}_{alarm_name_slug}"
 
+    def _resolve_alarm(self) -> tuple[str | None, dict[str, Any]]:
+        """Return the current objectId and data of this alarm."""
+        data = self.coordinator.data or {}
+        alarms = data.get("alarms", {})
+        return find_alarm(alarms, self._alarm_object_id, self._alarm_key)
+
     @property
-    def alarm_data(self) -> dict:
+    def alarm_object_id(self) -> str | None:
+        """Return the alarm's current objectId, or None when it is gone."""
+        object_id, _ = self._resolve_alarm()
+        if object_id is not None:
+            self._alarm_object_id = object_id
+        return object_id
+
+    @property
+    def alarm_data(self) -> dict[str, Any]:
         """Get current alarm data from coordinator."""
-        if self.coordinator.data and "alarms" in self.coordinator.data:
-            return self.coordinator.data["alarms"].get(self._alarm_object_id, {})
-        return {}
+        _, data = self._resolve_alarm()
+        return data
+
+    def _require_alarm_id(self) -> str:
+        """Return the current objectId, or fail the action if the alarm is gone."""
+        object_id = self.alarm_object_id
+        if object_id is None:
+            msg = f"Alarm '{self._attr_name}' no longer exists on the device"
+            raise HomeAssistantError(msg)
+        return object_id
 
     @property
     def native_value(self) -> time | None:
@@ -125,8 +154,9 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
                 except (ValueError, IndexError):
                     pass
 
-        # Default to 7:00 AM if parsing fails or no time available
-        return time(7, 0)
+        # Unknown rather than a fabricated 07:00 when the alarm is gone or the
+        # payload cannot be parsed.
+        return None
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass."""
@@ -136,7 +166,7 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
         _LOGGER.info(
             "Initialized alarm time '%s' (objectId: %s) for device %s - Time: %s",
             alarm_name,
-            self._alarm_object_id,
+            self.alarm_object_id,
             self._device_id,
             self.native_value.strftime("%H:%M") if self.native_value else "N/A",
         )
@@ -155,6 +185,7 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
 
     async def async_set_value(self, value: time) -> None:
         """Set the alarm time."""
+        object_id = self._require_alarm_id()
         try:
             # Format time as HH:MM string for API
             time_str = value.strftime("%H:%M")
@@ -162,14 +193,14 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
             # Update via API
             await self._api.update_alarm(
                 self._device_id,
-                self._alarm_object_id,
+                object_id,
                 time=time_str,
             )
 
             _LOGGER.info(
                 "Set alarm '%s' (objectId: %s) time to %s for device %s",
                 self.alarm_data.get("name", "Alarm"),
-                self._alarm_object_id,
+                object_id,
                 time_str,
                 self._device_id,
             )
@@ -180,7 +211,7 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
         except Exception as e:
             _LOGGER.error(
                 "Failed to set alarm time for %s: %s",
-                self._alarm_object_id,
+                object_id,
                 e,
             )
             raise
@@ -188,7 +219,7 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return True
+        return super().available and self.alarm_object_id is not None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -200,8 +231,8 @@ class RemiAlarmTime(CoordinatorEntity, TimeEntity):
         if alarm_name is not None:
             attributes["name"] = alarm_name
 
-        if self._alarm_object_id is not None:
-            attributes["alarm_id"] = self._alarm_object_id
+        if self.alarm_object_id is not None:
+            attributes["alarm_id"] = self.alarm_object_id
 
         brightness = alarm_data.get("brightness")
         if brightness is not None:
