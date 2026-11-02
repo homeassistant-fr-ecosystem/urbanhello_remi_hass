@@ -1,7 +1,6 @@
 import logging
 
-from homeassistant.components.device_tracker import ScannerEntity
-from homeassistant.components.device_tracker.const import SourceType
+from homeassistant.components.device_tracker import ScannerEntity, SourceType
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 

@@ -7,5 +7,5 @@
   "documentation": "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/homeassistant-fr-ecosystem/urbanhello_remi_hass/issues",
-  "version": "0.1.0"
+  "version": "0.2.2"
 }

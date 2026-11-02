@@ -45,6 +45,17 @@ SERVICE_DELETE_ALARM = "delete_alarm"
 SERVICE_UPDATE_ALARM = "update_alarm"
 
 
+def _device_version(value: Any) -> str | None:
+    """Coerce a device version to the string the device registry requires.
+
+    The Rémi API is not consistent about version types (``bt_hardware_version``
+    is an int, firmware versions may come back as numbers too). Home Assistant
+    started warning about non-string versions in 2026.10 and rejects them from
+    2026.12, so normalise here instead of at every call site.
+    """
+    return None if value is None else str(value)
+
+
 def get_device_info(
     domain: str,
     device_id: str,
@@ -59,12 +70,8 @@ def get_device_info(
         name=device_name,
         manufacturer=MANUFACTURER,
         model=MODEL,
-        sw_version=raw_data.get("current_firmware_version"),
-        hw_version=(
-            str(raw_data["bt_hardware_version"])
-            if raw_data.get("bt_hardware_version") is not None
-            else None
-        ),
+        sw_version=_device_version(raw_data.get("current_firmware_version")),
+        hw_version=_device_version(raw_data.get("bt_hardware_version")),
         connections=(
             {("ip", raw_data.get("ipv4Address"))}
             if raw_data.get("ipv4Address")
