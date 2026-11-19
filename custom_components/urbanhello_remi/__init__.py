@@ -8,7 +8,11 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryNotReady,
+    HomeAssistantError,
+)
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -217,6 +221,7 @@ def _migrate_alarm_unique_ids(
     }
 
     # 1. Re-key the entity backing a live alarm, preserving its settings.
+    rekeyed_legacy_ids: set[str] = set()
     for new_unique_id, legacy_unique_id in expected.items():
         if new_unique_id == legacy_unique_id or new_unique_id in known:
             continue
@@ -228,12 +233,18 @@ def _migrate_alarm_unique_ids(
         )
         registry.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
         known[new_unique_id] = known.pop(legacy_unique_id)
+        rekeyed_legacy_ids.add(legacy_unique_id)
 
     # 2. Drop the leftovers from previous objectIds.
+    # Only prune entities whose legacy objectId was successfully re-keyed this
+    # run. This prevents a partial alarm payload (e.g. transient API failure
+    # returning fewer alarms) from causing live entities to be deleted.
     for unique_id, entity in list(known.items()):
         if "_alarm_" not in unique_id or unique_id in expected:
             continue
         if unique_id.split("_alarm_", 1)[0] not in covered_devices:
+            continue
+        if unique_id not in rekeyed_legacy_ids:
             continue
         _LOGGER.info(
             "Removing stale alarm entity %s (unique_id %s)",
@@ -241,6 +252,22 @@ def _migrate_alarm_unique_ids(
             unique_id,
         )
         registry.async_remove(entity.entity_id)
+
+
+async def _safe_api_call(
+    api_call,
+    api_device_id: str,
+    coordinators: dict[str, RemiCoordinator],
+    refresh: bool = True,
+) -> None:
+    """Call an API method, wrapping RemiAPIError as HomeAssistantError."""
+    try:
+        await api_call()
+    except RemiAPIError as e:
+        msg = f"API call failed for device {api_device_id}: {e}"
+        raise HomeAssistantError(msg) from e
+    if refresh and api_device_id in coordinators:
+        await coordinators[api_device_id].async_request_refresh()
 
 
 def async_register_services(
@@ -260,22 +287,27 @@ def async_register_services(
                 return identifier[1]
         return ha_device_id
 
+    api = entry.runtime_data.api
+    coordinators = entry.runtime_data.coordinators
+
     async def handle_create_alarm(call: ServiceCall):
         api_device_id = get_api_device_id(call.data["device_id"])
         alarm_time = call.data["time"]
         kwargs = {k: v for k, v in call.data.items() if k not in ["device_id", "time"]}
-        api = entry.runtime_data.api
-        await api.create_alarm(api_device_id, alarm_time, **kwargs)
-        if api_device_id in entry.runtime_data.coordinators:
-            await entry.runtime_data.coordinators[api_device_id].async_request_refresh()
+        await _safe_api_call(
+            lambda: api.create_alarm(api_device_id, alarm_time, **kwargs),
+            api_device_id,
+            coordinators,
+        )
 
     async def handle_delete_alarm(call: ServiceCall):
         api_device_id = get_api_device_id(call.data["device_id"])
         alarm_id = call.data["alarm_id"]
-        api = entry.runtime_data.api
-        await api.delete_alarm(api_device_id, alarm_id)
-        if api_device_id in entry.runtime_data.coordinators:
-            await entry.runtime_data.coordinators[api_device_id].async_request_refresh()
+        await _safe_api_call(
+            lambda: api.delete_alarm(api_device_id, alarm_id),
+            api_device_id,
+            coordinators,
+        )
 
     async def handle_update_alarm(call: ServiceCall):
         api_device_id = get_api_device_id(call.data["device_id"])
@@ -283,25 +315,31 @@ def async_register_services(
         kwargs = {
             k: v for k, v in call.data.items() if k not in ["device_id", "alarm_id"]
         }
-        api = entry.runtime_data.api
-        await api.update_alarm(api_device_id, alarm_id, **kwargs)
-        if api_device_id in entry.runtime_data.coordinators:
-            await entry.runtime_data.coordinators[api_device_id].async_request_refresh()
+        await _safe_api_call(
+            lambda: api.update_alarm(api_device_id, alarm_id, **kwargs),
+            api_device_id,
+            coordinators,
+        )
 
     async def handle_trigger_alarm(call: ServiceCall):
         api_device_id = get_api_device_id(call.data["device_id"])
         alarm_id = call.data["alarm_id"]
-        api = entry.runtime_data.api
-        await api.trigger_alarm(api_device_id, alarm_id)
+        await _safe_api_call(
+            lambda: api.trigger_alarm(api_device_id, alarm_id),
+            api_device_id,
+            coordinators,
+            refresh=False,
+        )
 
     async def handle_snooze_alarm(call: ServiceCall):
         api_device_id = get_api_device_id(call.data["device_id"])
         alarm_id = call.data["alarm_id"]
         duration = call.data.get("duration", 9)
-        api = entry.runtime_data.api
-        await api.snooze_alarm(api_device_id, alarm_id, duration)
-        if api_device_id in entry.runtime_data.coordinators:
-            await entry.runtime_data.coordinators[api_device_id].async_request_refresh()
+        await _safe_api_call(
+            lambda: api.snooze_alarm(api_device_id, alarm_id, duration),
+            api_device_id,
+            coordinators,
+        )
 
     hass.services.async_register(
         DOMAIN, SERVICE_CREATE_ALARM, handle_create_alarm, schema=CREATE_ALARM_SCHEMA

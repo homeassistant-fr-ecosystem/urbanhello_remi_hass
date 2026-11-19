@@ -394,23 +394,28 @@ class RemiAPI:
             [int(time_parts[0]), int(time_parts[1])] if len(time_parts) >= 2 else [0, 0]
         )
 
-        payload = {
+        # Map days (0=Mon..6=Sun) to Parse recurrence array
+        recurrence = [0] * 7
+        if "days" in kwargs:
+            for day_index in kwargs["days"]:
+                if 0 <= day_index < 7:
+                    recurrence[day_index] = 1
+        else:
+            recurrence = [1] * 7
+
+        payload: dict[str, Any] = {
             "remi": self._pointer("Remi", object_id),
             "event_time": event_time,
             "enabled": kwargs.get("enabled", True),
-            "recurrence": kwargs.get("recurrence", [1] * 7),
+            "recurrence": recurrence,
         }
-        # Add other kwargs as needed
 
-        for cls in ["Event", "Alarm", "Schedule"]:
-            try:
-                result = await self._request("POST", f"/classes/{cls}", json=payload)
-                self.alarms.pop(object_id, None)
-                return result
-            except RemiAPIError:
-                continue
-        msg = "Failed to create alarm"
-        raise RemiAPIError(msg)
+        if "name" in kwargs:
+            payload["name"] = kwargs["name"]
+
+        result = await self._request("POST", "/classes/Event", json=payload)
+        self.alarms.pop(object_id, None)
+        return result
 
     async def update_alarm(
         self, object_id: str, alarm_id: str, **kwargs
@@ -483,7 +488,8 @@ class RemiAPI:
                 return True
             except RemiAPIError:
                 continue
-        return False
+        msg = f"Failed to delete alarm {alarm_id}"
+        raise RemiAPIError(msg)
 
     async def enable_alarm(self, object_id: str, alarm_id: str) -> dict[str, Any]:
         """Enable an alarm."""
