@@ -1,6 +1,7 @@
 {
   "domain": "urbanhello_remi",
   "name": "Rémi UrbanHello",
+  "categories": ["health_wellbeing"],
   "codeowners": ["@pdruart", "@sguernion"],
   "config_flow": true,
   "dependencies": [],
