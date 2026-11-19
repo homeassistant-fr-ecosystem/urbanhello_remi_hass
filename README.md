@@ -46,7 +46,6 @@ For each Rémi device, the following entities are created:
 
 #### Numbers
 - **Volume**: Control device volume (0-100%)
-- **Night Light Level**: Minimum brightness for the nightlight (0-100%)
 - **Night Face Level**: Face display brightness during night mode (0-100%)
 - **Noise Threshold**: Noise notification trigger level (0-100%)
 
@@ -57,10 +56,10 @@ For each Rémi device, the following entities are created:
 - **Music Mode**: Off, Music, or White Noise
 
 #### Time
-- **Alarm 1/2/3 Time**: View and set the time for each alarm.
+- **Alarm Time**: View and set the time for each alarm.
 
 #### Switch
-- **Alarm 1/2/3**: Enable or disable each alarm.
+- **Alarm**: Enable or disable each alarm.
 
 #### Device Tracker
 - **Network Status**: Track device connection status (diagnostic, disabled by default)
@@ -117,17 +116,17 @@ automation:
     action:
       - service: light.turn_on
         target:
-          entity_id: light.remi_baby_room_night_light
+          entity_id: light.baby_room_night_light
         data:
           brightness_pct: 30
       - service: select.select_option
         target:
-          entity_id: select.remi_baby_room_face
+          entity_id: select.baby_room_face
         data:
           option: "sleepy_face"
       - service: select.select_option
         target:
-          entity_id: select.remi_baby_room_music_mode
+          entity_id: select.baby_room_music_mode
         data:
           option: "white_noise"
 ```
@@ -142,12 +141,12 @@ automation:
     action:
       - service: select.select_option
         target:
-          entity_id: select.remi_baby_room_face
+          entity_id: select.baby_room_face
         data:
           option: "awake_face"
       - service: select.select_option
         target:
-          entity_id: select.remi_baby_room_music_mode
+          entity_id: select.baby_room_music_mode
         data:
           option: "off"
 ```
