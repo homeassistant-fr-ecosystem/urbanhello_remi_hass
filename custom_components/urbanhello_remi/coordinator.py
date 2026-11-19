@@ -61,7 +61,7 @@ class RemiCoordinator(DataUpdateCoordinator):
         """
         try:
             # Fetch fresh device info from API
-            device_info = await self.api.get_remi_info(self.device_id, refresh=True)
+            device_info = await self.api.get_remi_info(self.device_id)
 
             # Fetch fresh alarm data from API
             alarms = await self.api.get_alarms(self.device_id, refresh=True)

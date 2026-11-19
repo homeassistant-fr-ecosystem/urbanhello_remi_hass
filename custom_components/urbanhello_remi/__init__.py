@@ -48,7 +48,6 @@ RemiConfigEntry = ConfigEntry
 # Service schemas
 CREATE_ALARM_SCHEMA = vol.Schema(
     {
-        vol.Required("device_id"): cv.string,
         vol.Required("time"): cv.string,
         vol.Optional("name"): cv.string,
         vol.Optional("enabled"): cv.boolean,
@@ -60,14 +59,12 @@ CREATE_ALARM_SCHEMA = vol.Schema(
 
 DELETE_ALARM_SCHEMA = vol.Schema(
     {
-        vol.Required("device_id"): cv.string,
         vol.Required("alarm_id"): cv.string,
     }
 )
 
 UPDATE_ALARM_SCHEMA = vol.Schema(
     {
-        vol.Required("device_id"): cv.string,
         vol.Required("alarm_id"): cv.string,
         vol.Optional("time"): cv.string,
         vol.Optional("enabled"): cv.boolean,
@@ -82,14 +79,12 @@ UPDATE_ALARM_SCHEMA = vol.Schema(
 
 TRIGGER_ALARM_SCHEMA = vol.Schema(
     {
-        vol.Required("device_id"): cv.string,
         vol.Required("alarm_id"): cv.string,
     }
 )
 
 SNOOZE_ALARM_SCHEMA = vol.Schema(
     {
-        vol.Required("device_id"): cv.string,
         vol.Required("alarm_id"): cv.string,
         vol.Optional("duration"): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
     }
@@ -291,9 +286,10 @@ def async_register_services(
     coordinators = entry.runtime_data.coordinators
 
     async def handle_create_alarm(call: ServiceCall):
-        api_device_id = get_api_device_id(call.data["device_id"])
+        ha_device_id = next(iter(call.target.device_id))
+        api_device_id = get_api_device_id(ha_device_id)
         alarm_time = call.data["time"]
-        kwargs = {k: v for k, v in call.data.items() if k not in ["device_id", "time"]}
+        kwargs = {k: v for k, v in call.data.items() if k != "time"}
         await _safe_api_call(
             lambda: api.create_alarm(api_device_id, alarm_time, **kwargs),
             api_device_id,
@@ -301,7 +297,8 @@ def async_register_services(
         )
 
     async def handle_delete_alarm(call: ServiceCall):
-        api_device_id = get_api_device_id(call.data["device_id"])
+        ha_device_id = next(iter(call.target.device_id))
+        api_device_id = get_api_device_id(ha_device_id)
         alarm_id = call.data["alarm_id"]
         await _safe_api_call(
             lambda: api.delete_alarm(api_device_id, alarm_id),
@@ -310,11 +307,10 @@ def async_register_services(
         )
 
     async def handle_update_alarm(call: ServiceCall):
-        api_device_id = get_api_device_id(call.data["device_id"])
+        ha_device_id = next(iter(call.target.device_id))
+        api_device_id = get_api_device_id(ha_device_id)
         alarm_id = call.data["alarm_id"]
-        kwargs = {
-            k: v for k, v in call.data.items() if k not in ["device_id", "alarm_id"]
-        }
+        kwargs = {k: v for k, v in call.data.items() if k != "alarm_id"}
         await _safe_api_call(
             lambda: api.update_alarm(api_device_id, alarm_id, **kwargs),
             api_device_id,
@@ -322,7 +318,8 @@ def async_register_services(
         )
 
     async def handle_trigger_alarm(call: ServiceCall):
-        api_device_id = get_api_device_id(call.data["device_id"])
+        ha_device_id = next(iter(call.target.device_id))
+        api_device_id = get_api_device_id(ha_device_id)
         alarm_id = call.data["alarm_id"]
         await _safe_api_call(
             lambda: api.trigger_alarm(api_device_id, alarm_id),
@@ -332,7 +329,8 @@ def async_register_services(
         )
 
     async def handle_snooze_alarm(call: ServiceCall):
-        api_device_id = get_api_device_id(call.data["device_id"])
+        ha_device_id = next(iter(call.target.device_id))
+        api_device_id = get_api_device_id(ha_device_id)
         alarm_id = call.data["alarm_id"]
         duration = call.data.get("duration", 9)
         await _safe_api_call(

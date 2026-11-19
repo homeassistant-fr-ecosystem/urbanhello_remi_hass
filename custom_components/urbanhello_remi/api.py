@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
-import time
 from datetime import datetime, timedelta
 from typing import Any
 
 import aiohttp
+
+from .const import FACE_MAP_HA_TO_API
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,7 +16,19 @@ class RemiAPIError(Exception):
 
 
 class RemiAPIAuthError(RemiAPIError):
-    """Exception for authentication failures."""
+    """Exception for authentication failures (HTTP 401)."""
+
+
+class RemiAPINotFoundError(RemiAPIError):
+    """Exception for resource not found (HTTP 404)."""
+
+
+class RemiAPIRateLimitedError(RemiAPIError):
+    """Exception for rate limiting (HTTP 429)."""
+
+
+class RemiAPIServerError(RemiAPIError):
+    """Exception for server errors (HTTP 5xx)."""
 
 
 class RemiAPI:
@@ -29,17 +42,12 @@ class RemiAPI:
         username: str,
         password: str,
         session: aiohttp.ClientSession | None = None,
-        cache_duration: int = 60,
         request_timeout: int = 15,
     ) -> None:
         self.username = username
         self.password = password
         self.session_token: str | None = None
         self.remis: list[dict[str, Any]] = []
-        # Generic cache storage for Remi objects keyed by objectId
-        self.cache: dict[str, Any] = {}
-        self.cache_expiry: dict[str, float] = {}
-        self.cache_duration = float(cache_duration)
         # Faces map name -> objectId
         self.faces: dict[str, str] = {}
         # Alarms cache keyed by remi objectId
@@ -60,6 +68,29 @@ class RemiAPI:
         if include_session and self.session_token:
             headers["X-Parse-Session-Token"] = self.session_token
         return headers
+
+    def _raise_for_status(
+        self, resp: aiohttp.ClientResponse, text: str, method: str, url: str
+    ) -> None:
+        """Raise the appropriate RemiAPIError subclass based on HTTP status."""
+        if resp.status == 401:
+            msg = f"Authentication failed: {text}"
+            raise RemiAPIAuthError(msg)
+        if resp.status == 404:
+            msg = f"Resource not found: {text}"
+            raise RemiAPINotFoundError(msg)
+        if resp.status == 429:
+            msg = f"Rate limited: {text}"
+            raise RemiAPIRateLimitedError(msg)
+        if resp.status >= 500:
+            msg = f"Server error {resp.status}: {text}"
+            raise RemiAPIServerError(msg)
+        if resp.status >= 400:
+            _LOGGER.debug(
+                "Request %s %s failed: %s - %s", method, url, resp.status, text
+            )
+            msg = f"HTTP {resp.status}: {text}"
+            raise RemiAPIError(msg)
 
     async def _request(
         self,
@@ -83,15 +114,7 @@ class RemiAPI:
                 timeout=timeout_ctrl,
             ) as resp:
                 text = await resp.text()
-                if resp.status == 401:
-                    msg = f"Authentication failed: {text}"
-                    raise RemiAPIAuthError(msg)
-                if resp.status >= 400:
-                    _LOGGER.debug(
-                        "Request %s %s failed: %s - %s", method, url, resp.status, text
-                    )
-                    msg = f"HTTP {resp.status}: {text}"
-                    raise RemiAPIError(msg)
+                self._raise_for_status(resp, text, method, url)
                 try:
                     return await resp.json()
                 except Exception:
@@ -111,15 +134,7 @@ class RemiAPI:
                         timeout=timeout_ctrl,
                     ) as resp:
                         text = await resp.text()
-                        if resp.status == 401:
-                            msg = f"Authentication failed: {text}"
-                            raise RemiAPIAuthError(msg)
-                        if resp.status >= 400:
-                            _LOGGER.debug(
-                                "Fallback POST failed: %s - %s", resp.status, text
-                            )
-                            msg = f"HTTP {resp.status}: {text}"
-                            raise RemiAPIError(msg)
+                        self._raise_for_status(resp, text, method, url)
                         try:
                             return await resp.json()
                         except Exception:
@@ -196,17 +211,8 @@ class RemiAPI:
         self.remis = result.get("results", []) if isinstance(result, dict) else []
         return self.remis
 
-    def _is_cache_valid(self, key: str) -> bool:
-        expiry = self.cache_expiry.get(key)
-        return expiry is not None and expiry > time.time()
-
-    async def get_remi_info(
-        self, object_id: str, refresh: bool = False
-    ) -> dict[str, Any]:
+    async def get_remi_info(self, object_id: str) -> dict[str, Any]:
         """Retrieve Remi information."""
-        if not refresh and self._is_cache_valid(object_id):
-            return self.cache[object_id]
-
         data = await self._request("GET", f"/classes/Remi/{object_id}")
         if not isinstance(data, dict):
             msg = "Unexpected response when fetching Remi info"
@@ -227,8 +233,6 @@ class RemiAPI:
             "raw": data,
         }
 
-        self.cache[object_id] = remi_info
-        self.cache_expiry[object_id] = time.time() + self.cache_duration
         return remi_info
 
     def _pointer(self, class_name: str, object_id: str) -> dict[str, str]:
@@ -236,10 +240,7 @@ class RemiAPI:
 
     async def _update_remi(self, object_id: str, payload: dict[str, Any]) -> Any:
         """Generic helper to update a Remi object."""
-        result = await self._request("PUT", f"/classes/Remi/{object_id}", json=payload)
-        self.cache_expiry.pop(object_id, None)
-        self.cache.pop(object_id, None)
-        return result
+        return await self._request("PUT", f"/classes/Remi/{object_id}", json=payload)
 
     async def set_brightness(self, object_id: str, brightness: int) -> Any:
         """Set the brightness."""
@@ -293,14 +294,7 @@ class RemiAPI:
 
     async def set_face_by_name(self, object_id: str, face_name: str) -> Any:
         """Set face by name."""
-        face_mapping = {
-            "sleepy_face": "sleepyFace",
-            "awake_face": "awakeFace",
-            "blank_face": "blankFace",
-            "semi_awake_face": "semiAwakeFace",
-            "smily_face": "smilyFace",
-        }
-        api_face_name = face_mapping.get(face_name, face_name)
+        api_face_name = FACE_MAP_HA_TO_API.get(face_name, face_name)
         face_id = self.faces.get(api_face_name)
         if not face_id:
             await self.get_faces(refresh=True)
@@ -324,9 +318,6 @@ class RemiAPI:
     async def async_stop_sound(self, object_id: str) -> Any:
         """Stop sound."""
         return await self._update_remi(object_id, {"sound": ""})
-
-    async def close(self) -> None:
-        pass
 
     # ========================================================================
     # ALARM MANAGEMENT METHODS
@@ -444,14 +435,7 @@ class RemiAPI:
 
                 # Map 'face' (name) to face pointer
                 if "face" in payload and isinstance(payload["face"], str):
-                    face_mapping = {
-                        "sleepy_face": "sleepyFace",
-                        "awake_face": "awakeFace",
-                        "blank_face": "blankFace",
-                        "semi_awake_face": "semiAwakeFace",
-                        "smily_face": "smilyFace",
-                    }
-                    api_face_name = face_mapping.get(payload["face"], payload["face"])
+                    api_face_name = FACE_MAP_HA_TO_API.get(payload["face"], payload["face"])
                     face_id = self.faces.get(api_face_name)
                     if not face_id:
                         await self.get_faces(refresh=True)

@@ -12,10 +12,9 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfTemperature,
 )
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
+from .entity import RemiEntity
 
 LIGHT_LUX = "lx"
 
@@ -30,12 +29,13 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     sensors = []
     for device in devices:
         device_id = device["objectId"]
-        device_name = device.get("name", "Rémi")
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
             _LOGGER.error(
-                "No coordinator found for device %s (%s)", device_name, device_id
+                "No coordinator found for device %s (%s)",
+                device.get("name", "Rémi"),
+                device_id,
             )
             continue
 
@@ -48,10 +48,9 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     async_add_entities(sensors)
 
 
-class RemiTemperatureSensor(CoordinatorEntity, SensorEntity):
+class RemiTemperatureSensor(RemiEntity, SensorEntity):
     """Representation of a Rémi temperature sensor."""
 
-    _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -59,16 +58,8 @@ class RemiTemperatureSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(self, coordinator: RemiCoordinator, device):
         """Initialize the temperature sensor."""
-        super().__init__(coordinator)
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_temperature"
-
-    @property
-    def device_info(self):
-        """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
@@ -80,15 +71,16 @@ class RemiTemperatureSensor(CoordinatorEntity, SensorEntity):
                     return float(temp) / 10.0
                 except (ValueError, TypeError):
                     _LOGGER.warning(
-                        "Invalid temperature value received for %s: %s", self.name, temp
+                        "Invalid temperature value received for %s: %s",
+                        self.name,
+                        temp,
                     )
         return None
 
 
-class RemiLuminositySensor(CoordinatorEntity, SensorEntity):
+class RemiLuminositySensor(RemiEntity, SensorEntity):
     """Representation of a Rémi ambient luminosity sensor."""
 
-    _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.ILLUMINANCE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = LIGHT_LUX
@@ -96,15 +88,8 @@ class RemiLuminositySensor(CoordinatorEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: RemiCoordinator, device):
-        super().__init__(coordinator)
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_luminosity"
-
-    @property
-    def device_info(self):
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
@@ -113,24 +98,16 @@ class RemiLuminositySensor(CoordinatorEntity, SensorEntity):
         return None
 
 
-class RemiFirmwareVersionSensor(CoordinatorEntity, SensorEntity):
+class RemiFirmwareVersionSensor(RemiEntity, SensorEntity):
     """Representation of a Rémi firmware version sensor."""
 
-    _attr_has_entity_name = True
     _attr_icon = "mdi:chip"
     _attr_translation_key = "firmware_version"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: RemiCoordinator, device):
-        super().__init__(coordinator)
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_firmware_version"
-
-    @property
-    def device_info(self):
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
@@ -140,10 +117,9 @@ class RemiFirmwareVersionSensor(CoordinatorEntity, SensorEntity):
         return None
 
 
-class RemiRssiSensor(CoordinatorEntity, SensorEntity):
+class RemiRssiSensor(RemiEntity, SensorEntity):
     """Representation of a Rémi WiFi signal strength sensor."""
 
-    _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
@@ -152,15 +128,8 @@ class RemiRssiSensor(CoordinatorEntity, SensorEntity):
     _attr_entity_registry_enabled_default = False
 
     def __init__(self, coordinator: RemiCoordinator, device):
-        super().__init__(coordinator)
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_rssi"
-
-    @property
-    def device_info(self):
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
@@ -170,25 +139,17 @@ class RemiRssiSensor(CoordinatorEntity, SensorEntity):
         return None
 
 
-class RemiIpAddressSensor(CoordinatorEntity, SensorEntity):
+class RemiIpAddressSensor(RemiEntity, SensorEntity):
     """Representation of a Rémi IP address sensor."""
 
-    _attr_has_entity_name = True
     _attr_icon = "mdi:ip-network"
     _attr_translation_key = "ip_address"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_entity_registry_enabled_default = False
 
     def __init__(self, coordinator: RemiCoordinator, device):
-        super().__init__(coordinator)
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_ip_address"
-
-    @property
-    def device_info(self):
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):

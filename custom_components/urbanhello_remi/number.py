@@ -3,10 +3,9 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import BRAND_NAME, DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
+from .entity import RemiEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,12 +19,13 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     numbers: list[NumberEntity] = []
     for device in devices:
         device_id = device["objectId"]
-        device_name = device.get("name", "Rémi")
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
             _LOGGER.error(
-                "No coordinator found for device %s (%s)", device_name, device_id
+                "No coordinator found for device %s (%s)",
+                device.get("name", "Rémi"),
+                device_id,
             )
             continue
 
@@ -36,7 +36,7 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     async_add_entities(numbers)
 
 
-class RemiVolumeNumber(CoordinatorEntity, NumberEntity):
+class RemiVolumeNumber(RemiEntity, NumberEntity):
     """Representation of a Rémi volume control."""
 
     _attr_translation_key = "volume"
@@ -47,19 +47,8 @@ class RemiVolumeNumber(CoordinatorEntity, NumberEntity):
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
         """Initialize the volume number entity."""
-        super().__init__(coordinator)
-        self._api = api
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
-
-        self._attr_name = f"{BRAND_NAME} {self._device_name} Volume"
+        super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_volume_control"
-
-    @property
-    def device_info(self):
-        """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
@@ -96,7 +85,7 @@ class RemiVolumeNumber(CoordinatorEntity, NumberEntity):
             raise
 
 
-class RemiNoiseThresholdNumber(CoordinatorEntity, NumberEntity):
+class RemiNoiseThresholdNumber(RemiEntity, NumberEntity):
     """Representation of a Rémi noise notification threshold control."""
 
     _attr_translation_key = "noise_threshold"
@@ -107,19 +96,8 @@ class RemiNoiseThresholdNumber(CoordinatorEntity, NumberEntity):
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
         """Initialize the noise threshold number entity."""
-        super().__init__(coordinator)
-        self._api = api
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
-
-        self._attr_name = f"{BRAND_NAME} {self._device_name} Noise Threshold"
+        super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_noise_threshold"
-
-    @property
-    def device_info(self):
-        """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):
@@ -161,7 +139,7 @@ class RemiNoiseThresholdNumber(CoordinatorEntity, NumberEntity):
             raise
 
 
-class RemiNightFaceLevel(CoordinatorEntity, NumberEntity):
+class RemiNightFaceLevel(RemiEntity, NumberEntity):
     """Representation of a Rémi night face level control."""
 
     _attr_translation_key = "night_face_level"
@@ -172,19 +150,8 @@ class RemiNightFaceLevel(CoordinatorEntity, NumberEntity):
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
         """Initialize the night face level number entity."""
-        super().__init__(coordinator)
-        self._api = api
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
-
-        self._attr_name = f"{BRAND_NAME} {self._device_name} Night Face Level"
+        super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_night_face_level"
-
-    @property
-    def device_info(self):
-        """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def native_value(self):

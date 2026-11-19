@@ -4,17 +4,14 @@ import logging
 from typing import ClassVar
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    BRAND_NAME,
-    DOMAIN,
     FACE_MAP_API_TO_HA,
     FACE_MAP_HA_TO_API,
     MUSIC_MODE_OPTIONS,
-    get_device_info,
 )
 from .coordinator import RemiCoordinator
+from .entity import RemiEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,12 +25,13 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     selects = []
     for device in devices:
         device_id = device["objectId"]
-        device_name = device.get("name", "Rémi")
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
             _LOGGER.error(
-                "No coordinator found for device %s (%s)", device_name, device_id
+                "No coordinator found for device %s (%s)",
+                device.get("name", "Rémi"),
+                device_id,
             )
             continue
 
@@ -44,26 +42,15 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     async_add_entities(selects)
 
 
-class RemiFaceSelect(CoordinatorEntity, SelectEntity):
+class RemiFaceSelect(RemiEntity, SelectEntity):
     """Representation of a Rémi face selector."""
 
     _attr_translation_key = "face"
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
         """Initialize the face select entity."""
-        super().__init__(coordinator)
-        self._api = api
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
-
-        self._attr_name = f"{BRAND_NAME} {self._device_name} Face"
+        super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_face_select"
-
-    @property
-    def device_info(self):
-        """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def current_option(self):
@@ -127,7 +114,7 @@ class RemiFaceSelect(CoordinatorEntity, SelectEntity):
             raise
 
 
-class RemiClockFormatSelect(CoordinatorEntity, SelectEntity):
+class RemiClockFormatSelect(RemiEntity, SelectEntity):
     """Select entity to choose 12h or 24h clock display format."""
 
     _attr_translation_key = "clock_format"
@@ -135,17 +122,8 @@ class RemiClockFormatSelect(CoordinatorEntity, SelectEntity):
     _attr_icon = "mdi:clock-outline"
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
-        super().__init__(coordinator)
-        self._api = api
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
-        self._attr_name = f"{BRAND_NAME} {self._device_name} Clock Format"
+        super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_clock_format"
-
-    @property
-    def device_info(self):
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def current_option(self):
@@ -165,25 +143,16 @@ class RemiClockFormatSelect(CoordinatorEntity, SelectEntity):
             raise
 
 
-class RemiMusicModeSelect(CoordinatorEntity, SelectEntity):
+class RemiMusicModeSelect(RemiEntity, SelectEntity):
     """Select entity to choose the music mode."""
 
     _attr_translation_key = "music_mode"
     _attr_icon = "mdi:music"
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
-        super().__init__(coordinator)
-        self._api = api
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
-        self._attr_name = f"{BRAND_NAME} {self._device_name} Music Mode"
+        super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_music_mode"
         self._attr_options = list(MUSIC_MODE_OPTIONS.values())
-
-    @property
-    def device_info(self):
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def current_option(self):

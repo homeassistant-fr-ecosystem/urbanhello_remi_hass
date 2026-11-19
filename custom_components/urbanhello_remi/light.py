@@ -7,10 +7,9 @@ from homeassistant.components.light import (  # type: ignore[attr-defined]
     ColorMode,
     LightEntity,
 )
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import BRAND_NAME, DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
+from .entity import RemiEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,12 +23,13 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     lights = []
     for device in devices:
         device_id = device["objectId"]
-        device_name = device.get("name", "Rémi")
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
             _LOGGER.error(
-                "No coordinator found for device %s (%s)", device_name, device_id
+                "No coordinator found for device %s (%s)",
+                device.get("name", "Rémi"),
+                device_id,
             )
             continue
 
@@ -39,7 +39,7 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     async_add_entities(lights)
 
 
-class RemiNightLight(CoordinatorEntity, LightEntity):
+class RemiNightLight(RemiEntity, LightEntity):
     """Representation of a Rémi Night Light (brightness-only control)."""
 
     _attr_translation_key = "night_light"
@@ -47,20 +47,9 @@ class RemiNightLight(CoordinatorEntity, LightEntity):
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
         """Initialize the night light."""
-        super().__init__(coordinator)
-        self._api = api
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
-
-        self._attr_name = f"{BRAND_NAME} {self._device_name} Night Light"
+        super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_night_light"
         self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
-
-    @property
-    def device_info(self):
-        """Return device information to link the entity to the integration."""
-        return get_device_info(DOMAIN, self._device_id, self._device_name, self._device)
 
     @property
     def is_on(self):

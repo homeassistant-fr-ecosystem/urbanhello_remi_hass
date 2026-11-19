@@ -4,10 +4,9 @@ import logging
 
 from homeassistant.components.device_tracker import ScannerEntity, SourceType
 from homeassistant.const import EntityCategory
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import BRAND_NAME, DOMAIN, get_device_info
 from .coordinator import RemiCoordinator
+from .entity import RemiEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,12 +20,13 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     trackers = []
     for device in devices:
         device_id = device["objectId"]
-        device_name = device.get("name", "Rémi")
         coordinator = coordinators.get(device_id)
 
         if not coordinator:
             _LOGGER.error(
-                "No coordinator found for device %s (%s)", device_name, device_id
+                "No coordinator found for device %s (%s)",
+                device.get("name", "Rémi"),
+                device_id,
             )
             continue
 
@@ -35,7 +35,7 @@ async def async_setup_entry(_hass, entry, async_add_entities):
     async_add_entities(trackers)
 
 
-class RemiDeviceTracker(CoordinatorEntity, ScannerEntity):
+class RemiDeviceTracker(RemiEntity, ScannerEntity):
     """Representation of a Rémi device tracker."""
 
     _attr_translation_key = "remi"
@@ -44,17 +44,8 @@ class RemiDeviceTracker(CoordinatorEntity, ScannerEntity):
 
     def __init__(self, coordinator: RemiCoordinator, api, device):
         """Initialize the device tracker."""
-        super().__init__(coordinator)
-        self._api = api
-        self._device = device
-        self._device_name = device.get("name", "Rémi")
-        self._device_id = device["objectId"]
-
-        self._attr_name = f"{BRAND_NAME} {self._device_name}"
+        super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_device_tracker"
-        self._attr_device_info = get_device_info(  # type: ignore[assignment]
-            DOMAIN, self._device_id, self._device_name, self._device
-        )
 
     @property
     def source_type(self):
@@ -65,8 +56,7 @@ class RemiDeviceTracker(CoordinatorEntity, ScannerEntity):
     def is_connected(self):
         """Return true if the device is connected to the network."""
         if self.coordinator.data and "device_info" in self.coordinator.data:
-            device_info = self.coordinator.data["device_info"]
-            raw = device_info.get("raw", {})
+            raw = self.coordinator.data["device_info"].get("raw", {})
             is_online = raw.get("online")
             return is_online if is_online is not None else False
         return False
@@ -75,8 +65,7 @@ class RemiDeviceTracker(CoordinatorEntity, ScannerEntity):
     def ip_address(self):
         """Return the primary IP address of the device."""
         if self.coordinator.data and "device_info" in self.coordinator.data:
-            device_info = self.coordinator.data["device_info"]
-            raw = device_info.get("raw", {})
+            raw = self.coordinator.data["device_info"].get("raw", {})
             return raw.get("ipv4Address")
         return None
 
@@ -84,8 +73,7 @@ class RemiDeviceTracker(CoordinatorEntity, ScannerEntity):
     def mac_address(self):
         """Return the MAC address of the device."""
         if self.coordinator.data and "device_info" in self.coordinator.data:
-            device_info = self.coordinator.data["device_info"]
-            raw = device_info.get("raw", {})
+            raw = self.coordinator.data["device_info"].get("raw", {})
             return raw.get("macAddress")
         return None
 

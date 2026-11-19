@@ -1,15 +1,12 @@
 create_alarm:
   name: Create Alarm
   description: Create a new alarm clock on a Rémi device.
+  target:
+    selector:
+      device:
+        integration: urbanhello_remi
+        model: Rémi Clock
   fields:
-    device_id:
-      name: Device
-      description: Select the Rémi device.
-      required: true
-      selector:
-        device:
-          integration: urbanhello_remi
-          model: Rémi Clock
     time:
       name: Time
       description: The alarm time in HH:MM format.
@@ -58,15 +55,12 @@ create_alarm:
 delete_alarm:
   name: Delete Alarm
   description: Delete an existing alarm clock from a Rémi device.
+  target:
+    selector:
+      device:
+        integration: urbanhello_remi
+        model: Rémi Clock
   fields:
-    device_id:
-      name: Device
-      description: Select the Rémi device.
-      required: true
-      selector:
-        device:
-          integration: urbanhello_remi
-          model: Rémi Clock
     alarm_id:
       name: Alarm ID
       description: The objectId of the alarm to delete (found in alarm entity attributes).
@@ -77,15 +71,12 @@ delete_alarm:
 update_alarm:
   name: Update Alarm
   description: Update an existing alarm clock's settings.
+  target:
+    selector:
+      device:
+        integration: urbanhello_remi
+        model: Rémi Clock
   fields:
-    device_id:
-      name: Device
-      description: Select the Rémi device.
-      required: true
-      selector:
-        device:
-          integration: urbanhello_remi
-          model: Rémi Clock
     alarm_id:
       name: Alarm ID
       description: The objectId of the alarm to update.
@@ -162,15 +153,12 @@ update_alarm:
 trigger_alarm:
   name: Trigger Alarm
   description: Manually trigger an alarm on a Rémi device.
+  target:
+    selector:
+      device:
+        integration: urbanhello_remi
+        model: Rémi Clock
   fields:
-    device_id:
-      name: Device
-      description: Select the Rémi device.
-      required: true
-      selector:
-        device:
-          integration: urbanhello_remi
-          model: Rémi Clock
     alarm_id:
       name: Alarm ID
       description: The objectId of the alarm to trigger.
@@ -181,15 +169,12 @@ trigger_alarm:
 snooze_alarm:
   name: Snooze Alarm
   description: Snooze a currently active alarm on a Rémi device.
+  target:
+    selector:
+      device:
+        integration: urbanhello_remi
+        model: Rémi Clock
   fields:
-    device_id:
-      name: Device
-      description: Select the Rémi device.
-      required: true
-      selector:
-        device:
-          integration: urbanhello_remi
-          model: Rémi Clock
     alarm_id:
       name: Alarm ID
       description: The objectId of the alarm to snooze.

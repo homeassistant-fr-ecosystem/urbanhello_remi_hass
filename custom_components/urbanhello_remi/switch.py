@@ -10,16 +10,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    DOMAIN,
     build_alarm_key,
     build_alarm_unique_id,
     find_alarm,
-    get_device_info,
 )
 from .coordinator import RemiCoordinator
+from .entity import RemiEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,7 +69,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
+class RemiAlarmSwitch(RemiEntity, SwitchEntity):
     """Representation of a Rémi alarm clock enable/disable switch."""
 
     _attr_translation_key = "alarm"
@@ -82,15 +80,11 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
         api,
         device_id: str,
         device_name: str,
-        device_data: dict,
+        device_data: dict[str, Any],
         alarm_object_id: str,
     ) -> None:
         """Initialize the alarm clock switch entity."""
-        super().__init__(coordinator)
-        self._api = api
-        self._device_id = device_id
-        self._device_name = device_name
-        self._device_data = device_data
+        super().__init__(coordinator, device_data, api)
         self._alarm_object_id = alarm_object_id
 
         # Set entity attributes with a stable, name-based unique_id
@@ -154,13 +148,6 @@ class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
             self.alarm_object_id,
             self._device_id,
             "enabled" if self.is_on else "disabled",
-        )
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        return get_device_info(
-            DOMAIN, self._device_id, self._device_name, self._device_data
         )
 
     @property

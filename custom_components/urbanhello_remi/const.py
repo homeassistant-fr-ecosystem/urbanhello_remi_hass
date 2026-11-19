@@ -28,18 +28,9 @@ MUSIC_MODE_OPTIONS: dict[int, str] = {
     2: "white_noise",
 }
 
-# Alarm clock constants
-MAX_ALARMS_PER_DEVICE = 3
-DEFAULT_ALARM_HOUR = 7
-DEFAULT_ALARM_MINUTE = 0
-DEFAULT_ALARM_VOLUME = 50
-DEFAULT_ALARM_FACE = "awake_face"
-ALARM_SNOOZE_DURATION = 9  # minutes
-
 # Alarm clock service names
 SERVICE_TRIGGER_ALARM = "trigger_alarm"
 SERVICE_SNOOZE_ALARM = "snooze_alarm"
-SERVICE_STOP_ALARM = "stop_alarm"
 SERVICE_CREATE_ALARM = "create_alarm"
 SERVICE_DELETE_ALARM = "delete_alarm"
 SERVICE_UPDATE_ALARM = "update_alarm"
