@@ -16,6 +16,7 @@ from homeassistant.exceptions import (
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .alarm_store import AlarmIdentityStore
 from .api import RemiAPI, RemiAPIAuthError, RemiAPIError
 from .const import (
     DOMAIN,
@@ -40,6 +41,7 @@ class RemiRuntimeData:
     api: RemiAPI
     devices: list[dict[str, Any]]
     coordinators: dict[str, RemiCoordinator]
+    alarm_store: AlarmIdentityStore
 
 
 # RemiConfigEntry type alias (Python 3.12+ syntax would be: type RemiConfigEntry = ConfigEntry[RemiRuntimeData])
@@ -114,6 +116,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: RemiConfigEntry) -> bool
 
     scan_interval = entry.options.get("scan_interval", 60)
 
+    # Create and load the alarm identity store (P1.9)
+    alarm_store = AlarmIdentityStore(hass, entry.entry_id)
+    await alarm_store.async_load()
+
     devices = []
     coordinators = {}
 
@@ -149,6 +155,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: RemiConfigEntry) -> bool
         api=api,
         devices=devices,
         coordinators=coordinators,
+        alarm_store=alarm_store,
     )
 
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -375,6 +382,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: RemiConfigEntry) -> boo
     if unload_ok:
         # Close the API session
         await entry.runtime_data.api.logout()
+
+        # Persist alarm identity mappings
+        await entry.runtime_data.alarm_store.async_save()
 
         # Unregister services if this is the last loaded entry for this domain
         loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)

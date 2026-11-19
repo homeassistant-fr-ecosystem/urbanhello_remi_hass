@@ -32,6 +32,7 @@ async def async_setup_entry(
     api = entry.runtime_data.api
     devices = entry.runtime_data.devices
     coordinators = entry.runtime_data.coordinators
+    alarm_store = entry.runtime_data.alarm_store
 
     entities = []
     for device in devices:
@@ -55,7 +56,14 @@ async def async_setup_entry(
         )
 
         # Create time entities for each alarm
-        for alarm_object_id, _alarm_data in alarms_dict.items():
+        for alarm_object_id, raw_alarm_data in alarms_dict.items():
+            alarm_data = raw_alarm_data or {}
+            alarm_key = build_alarm_key(
+                alarm_object_id, alarm_data.get("name"), alarms_dict
+            )
+            stable_uuid = alarm_store.resolve_uuid(
+                device_id, alarm_key, alarm_data
+            )
             entities.append(
                 RemiAlarmTime(
                     coordinator=coordinator,
@@ -64,6 +72,7 @@ async def async_setup_entry(
                     device_name=device_name,
                     device_data=device,
                     alarm_object_id=alarm_object_id,
+                    stable_uuid=stable_uuid,
                 )
             )
 
@@ -78,31 +87,36 @@ class RemiAlarmTime(RemiEntity, TimeEntity):
     def __init__(
         self,
         coordinator: RemiCoordinator,
+        *,
         api,
         device_id: str,
         device_name: str,
         device_data: dict[str, Any],
         alarm_object_id: str,
+        stable_uuid: str,
     ) -> None:
         """Initialize the alarm clock time entity."""
         super().__init__(coordinator, device_data, api)
         self._alarm_object_id = alarm_object_id
+        self._stable_uuid = stable_uuid
 
-        # Set entity attributes with a stable, name-based unique_id
+        # Set entity attributes with a stable UUID-based unique_id
         # Entity naming must match remi-card expectations and switch entities
         alarms = coordinator.data.get("alarms", {}) if coordinator.data else {}
         alarm_data = alarms.get(alarm_object_id, {})
         alarm_name = alarm_data.get("name", "Alarm")
-        self._alarm_key = build_alarm_key(alarm_object_id, alarm_data.get("name"), alarms)
+        self._alarm_key = build_alarm_key(
+            alarm_object_id, alarm_data.get("name"), alarms
+        )
 
-        # Use alarm name for entity_id, stable key for unique_id
+        # Use alarm name for entity_id, stable UUID for unique_id
         alarm_name_slug = alarm_name.lower().replace(" ", "_")
 
         # _attr_has_entity_name (from RemiEntity) prepends the device name,
         # so set only the alarm-specific name part to avoid "Rémi Rémi Alarm Time".
         self._attr_name = alarm_name
         self._attr_unique_id = build_alarm_unique_id(
-            device_id, alarm_object_id, alarm_name, alarms, "time"
+            device_id, stable_uuid, "time"
         )
         self._attr_suggested_object_id = f"{device_name.lower()}_{alarm_name_slug}"
 

@@ -103,14 +103,16 @@ def build_alarm_key(
 
 def build_alarm_unique_id(
     device_id: str,
-    alarm_object_id: str,
-    alarm_name: str | None,
-    alarms: dict[str, Any],
+    stable_uuid: str,
     suffix: str,
 ) -> str:
-    """Return the unique_id of an alarm entity."""
-    key = build_alarm_key(alarm_object_id, alarm_name, alarms)
-    return f"{device_id}_alarm_{key}_{suffix}"
+    """Return the unique_id of an alarm entity.
+
+    Uses a stable, locally-generated UUID instead of the server-generated
+    objectId or the mutable alarm name, so renaming an alarm or objectId
+    rotation does not create duplicate entities.
+    """
+    return f"{device_id}_alarm_{stable_uuid}_{suffix}"
 
 
 def find_alarm(
