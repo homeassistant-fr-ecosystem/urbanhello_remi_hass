@@ -98,7 +98,9 @@ class RemiAlarmSwitch(RemiEntity, SwitchEntity):
         # Use alarm name for entity_id, stable key for unique_id
         alarm_name_slug = alarm_name.lower().replace(" ", "_")
 
-        self._attr_name = f"{device_name} {alarm_name}"
+        # _attr_has_entity_name (from RemiEntity) prepends the device name,
+        # so set only the alarm-specific name part to avoid "Rémi Rémi Alarm".
+        self._attr_name = alarm_name
         self._attr_unique_id = build_alarm_unique_id(
             device_id, alarm_object_id, alarm_name, alarms, "enabled"
         )

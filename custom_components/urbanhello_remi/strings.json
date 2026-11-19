@@ -79,6 +79,16 @@
           "white_noise": "White Noise"
         }
       }
+    },
+    "switch": {
+      "alarm": {
+        "name": "Alarm"
+      }
+    },
+    "time": {
+      "alarm_time": {
+        "name": "Alarm Time"
+      }
     }
   },
   "services": {

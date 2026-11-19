@@ -19,29 +19,22 @@
       "already_configured": "This account is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Update interval (seconds)"
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "temperature": {
         "name": "Temperature"
       },
       "face": {
-        "name": "Face",
-        "state": {
-          "sleepy_face": "Sleepy",
-          "awake_face": "Awake",
-          "blank_face": "Blank",
-          "semi_awake_face": "Semi-Awake",
-          "smily_face": "Smiley"
-        }
-      },
-      "raw_data": {
-        "name": "Raw Data"
-      },
-      "rssi": {
-        "name": "Signal Strength (RSSI)"
-      },
-      "alarm_data": {
-        "name": "Alarm Data"
+        "name": "Face"
       },
       "luminosity": {
         "name": "Ambient Light"
@@ -67,30 +60,9 @@
         "name": "Firmware Update Available"
       }
     },
-    "number": {
-      "volume": {
-        "name": "Volume"
-      },
-      "night_light_level": {
-        "name": "Night Light Level"
-      },
-      "noise_threshold": {
-        "name": "Noise Notification Threshold"
-      },
-      "night_face_level": {
-        "name": "Night Face Level"
-      }
-    },
     "select": {
       "face": {
-        "name": "Face",
-        "state": {
-          "sleepy_face": "Sleepy",
-          "awake_face": "Awake",
-          "blank_face": "Blank",
-          "semi_awake_face": "Semi-Awake",
-          "smily_face": "Smiley"
-        }
+        "name": "Face"
       },
       "clock_format": {
         "name": "Clock Format",
@@ -108,27 +80,126 @@
         }
       }
     },
-    "light": {
-      "remi": {
-        "name": "Night Light"
-      },
-      "night_light": {
-        "name": "Night Light"
-      }
-    },
-    "device_tracker": {
-      "remi": {
-        "name": "Network Status"
+    "switch": {
+      "alarm": {
+        "name": "Alarm"
       }
     },
     "time": {
       "alarm_time": {
-        "name": "Alarm {alarm_number} Time"
+        "name": "Alarm Time"
+      }
+    }
+  },
+  "services": {
+    "create_alarm": {
+      "name": "Create alarm",
+      "description": "Create a new alarm clock on a Rémi device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "time": {
+          "name": "Time",
+          "description": "The alarm time."
+        },
+        "name": {
+          "name": "Name",
+          "description": "The name of the alarm."
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "Whether the alarm should be enabled immediately."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Select which days the alarm should trigger."
+        }
       }
     },
-    "switch": {
-      "alarm": {
-        "name": "Alarm {alarm_number}"
+    "delete_alarm": {
+      "name": "Delete alarm",
+      "description": "Delete an existing alarm clock from a Rémi device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "alarm_id": {
+          "name": "Alarm ID",
+          "description": "The objectId of the alarm to delete."
+        }
+      }
+    },
+    "update_alarm": {
+      "name": "Update alarm",
+      "description": "Update an existing alarm clock's settings.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "alarm_id": {
+          "name": "Alarm ID",
+          "description": "The objectId of the alarm to update."
+        },
+        "time": {
+          "name": "Time",
+          "description": "New alarm time."
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "Enable or disable the alarm."
+        },
+        "name": {
+          "name": "Name",
+          "description": "New name for the alarm."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Select which days the alarm should trigger."
+        },
+        "face": {
+          "name": "Face",
+          "description": "The face to show when the alarm triggers."
+        },
+        "brightness": {
+          "name": "Brightness",
+          "description": "Brightness level (0-100)."
+        }
+      }
+    },
+    "trigger_alarm": {
+      "name": "Trigger alarm",
+      "description": "Manually trigger an alarm on a Rémi device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "alarm_id": {
+          "name": "Alarm ID",
+          "description": "The objectId of the alarm to trigger."
+        }
+      }
+    },
+    "snooze_alarm": {
+      "name": "Snooze alarm",
+      "description": "Snooze a currently active alarm on a Rémi device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Select the Rémi device."
+        },
+        "alarm_id": {
+          "name": "Alarm ID",
+          "description": "The objectId of the alarm to snooze."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Snooze duration in minutes."
+        }
       }
     }
   }
