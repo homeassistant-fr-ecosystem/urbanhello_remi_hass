@@ -14,7 +14,7 @@ import uuid as uuid_module
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.store import Store
+from homeassistant.helpers.storage import Store
 
 STORAGE_VERSION = 1
 _STORAGE_KEY = "urbanhello_remi_alarm_identity"
