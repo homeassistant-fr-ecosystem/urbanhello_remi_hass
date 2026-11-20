@@ -75,13 +75,13 @@ class RemiVolumeNumber(RemiEntity, NumberEntity):
         try:
             volume_int = int(value)
             await self._api.set_volume(self._device_id, volume_int)
-            _LOGGER.debug("Set volume to %d for %s", volume_int, self._attr_name)
+            _LOGGER.debug("Set volume to %d for %s", volume_int, self.name)
 
             # Request immediate refresh from coordinator
             await self.coordinator.async_request_refresh()
 
         except Exception as e:
-            _LOGGER.error("Failed to set volume for %s: %s", self._attr_name, e)
+            _LOGGER.error("Failed to set volume for %s: %s", self.name, e)
             raise
 
 
@@ -126,7 +126,7 @@ class RemiNoiseThresholdNumber(RemiEntity, NumberEntity):
             threshold_int = int(value)
             await self._api.set_noise_threshold(self._device_id, threshold_int)
             _LOGGER.debug(
-                "Set noise threshold to %d for %s", threshold_int, self._attr_name
+                "Set noise threshold to %d for %s", threshold_int, self.name
             )
 
             # Request immediate refresh from coordinator
@@ -134,7 +134,7 @@ class RemiNoiseThresholdNumber(RemiEntity, NumberEntity):
 
         except Exception as e:
             _LOGGER.error(
-                "Failed to set noise threshold for %s: %s", self._attr_name, e
+                "Failed to set noise threshold for %s: %s", self.name, e
             )
             raise
 
@@ -179,7 +179,7 @@ class RemiNightFaceLevel(RemiEntity, NumberEntity):
             level_int = int(value)
             await self._api.set_night_luminosity(self._device_id, level_int)
             _LOGGER.debug(
-                "Set night face level to %d for %s", level_int, self._attr_name
+                "Set night face level to %d for %s", level_int, self.name
             )
 
             # Request immediate refresh from coordinator
@@ -187,6 +187,6 @@ class RemiNightFaceLevel(RemiEntity, NumberEntity):
 
         except Exception as e:
             _LOGGER.error(
-                "Failed to set night face level for %s: %s", self._attr_name, e
+                "Failed to set night face level for %s: %s", self.name, e
             )
             raise

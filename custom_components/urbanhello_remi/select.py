@@ -104,13 +104,13 @@ class RemiFaceSelect(RemiEntity, SelectEntity):
         try:
             api_option = FACE_MAP_HA_TO_API.get(option, option)
             await self._api.set_face_by_name(self._device_id, api_option)
-            _LOGGER.info("Changed face to %s for %s", option, self._attr_name)
+            _LOGGER.info("Changed face to %s for %s", option, self.name)
 
             # Request immediate refresh from coordinator
             await self.coordinator.async_request_refresh()
 
         except Exception as e:
-            _LOGGER.error("Failed to set face for %s: %s", self._attr_name, e)
+            _LOGGER.error("Failed to set face for %s: %s", self.name, e)
             raise
 
 
@@ -139,7 +139,7 @@ class RemiClockFormatSelect(RemiEntity, SelectEntity):
             await self._api.set_clock_format(self._device_id, option == "24h")
             await self.coordinator.async_request_refresh()
         except Exception as e:
-            _LOGGER.error("Failed to set clock format for %s: %s", self._attr_name, e)
+            _LOGGER.error("Failed to set clock format for %s: %s", self.name, e)
             raise
 
 
@@ -171,5 +171,5 @@ class RemiMusicModeSelect(RemiEntity, SelectEntity):
         except StopIteration:
             _LOGGER.error("Unknown music mode option: %s", option)
         except Exception as e:
-            _LOGGER.error("Failed to set music mode for %s: %s", self._attr_name, e)
+            _LOGGER.error("Failed to set music mode for %s: %s", self.name, e)
             raise

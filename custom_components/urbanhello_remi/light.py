@@ -83,7 +83,7 @@ class RemiNightLight(RemiEntity, LightEntity):
 
         await self._api.set_brightness(self._device_id, api_brightness)
         _LOGGER.debug(
-            "Set Night Light brightness to %d for %s", api_brightness, self._attr_name
+            "Set Night Light brightness to %d for %s", api_brightness, self.name
         )
 
         # Request immediate refresh from coordinator
@@ -92,7 +92,7 @@ class RemiNightLight(RemiEntity, LightEntity):
     async def async_turn_off(self, **_kwargs):
         """Turn off the light."""
         await self._api.set_brightness(self._device_id, 0)
-        _LOGGER.debug("Turned off Night Light for %s", self._attr_name)
+        _LOGGER.debug("Turned off Night Light for %s", self.name)
 
         # Request immediate refresh from coordinator
         await self.coordinator.async_request_refresh()
