@@ -48,6 +48,17 @@ class RemiDeviceTracker(RemiEntity, ScannerEntity):
         self._attr_unique_id = f"{self._device_id}_device_tracker"
 
     @property
+    def unique_id(self) -> str | None:
+        """Return a stable unique id.
+
+        ScannerEntity.unique_id falls back to ``mac_address``, which the Rémi
+        API may not report (or may change). Override it so the device tracker
+        always exposes a stable unique_id and never attaches a device without
+        one (HA 2027.8.0 breaking change).
+        """
+        return self._attr_unique_id
+
+    @property
     def source_type(self):
         """Return the source type of the device tracker."""
         return SourceType.ROUTER
