@@ -4,6 +4,7 @@ import logging
 
 from homeassistant.components.device_tracker import ScannerEntity, SourceType
 from homeassistant.const import EntityCategory
+from homeassistant.util import slugify
 
 from .coordinator import RemiCoordinator
 from .entity import RemiEntity
@@ -46,6 +47,9 @@ class RemiDeviceTracker(RemiEntity, ScannerEntity):
         """Initialize the device tracker."""
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_device_tracker"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_device_tracker"
+        )
 
     @property
     def unique_id(self) -> str | None:

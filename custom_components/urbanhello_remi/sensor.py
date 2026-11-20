@@ -12,6 +12,7 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfTemperature,
 )
+from homeassistant.util import slugify
 
 from .coordinator import RemiCoordinator
 from .entity import RemiEntity
@@ -60,6 +61,9 @@ class RemiTemperatureSensor(RemiEntity, SensorEntity):
         """Initialize the temperature sensor."""
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_temperature"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_temperature"
+        )
 
     @property
     def native_value(self):
@@ -90,6 +94,9 @@ class RemiLuminositySensor(RemiEntity, SensorEntity):
     def __init__(self, coordinator: RemiCoordinator, device):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_luminosity"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_luminosity"
+        )
 
     @property
     def native_value(self):
@@ -108,6 +115,9 @@ class RemiFirmwareVersionSensor(RemiEntity, SensorEntity):
     def __init__(self, coordinator: RemiCoordinator, device):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_firmware_version"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_firmware_version"
+        )
 
     @property
     def native_value(self):
@@ -130,6 +140,9 @@ class RemiRssiSensor(RemiEntity, SensorEntity):
     def __init__(self, coordinator: RemiCoordinator, device):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_rssi"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_rssi"
+        )
 
     @property
     def native_value(self):
@@ -150,6 +163,9 @@ class RemiIpAddressSensor(RemiEntity, SensorEntity):
     def __init__(self, coordinator: RemiCoordinator, device):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_ip_address"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_ip_address"
+        )
 
     @property
     def native_value(self):

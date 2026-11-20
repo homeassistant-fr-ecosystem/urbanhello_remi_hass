@@ -119,7 +119,9 @@ def build_alarm_key(
 
 def build_alarm_unique_id(
     device_id: str,
-    stable_uuid: str,
+    alarm_object_id: str,
+    alarm_name: str | None,
+    alarms: dict[str, Any],
     suffix: str,
 ) -> str:
     """Return the unique_id of an alarm entity."""

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.number import NumberEntity, NumberMode
+from homeassistant.util import slugify
 
 from .coordinator import RemiCoordinator
 from .entity import RemiEntity
@@ -49,6 +50,9 @@ class RemiVolumeNumber(RemiEntity, NumberEntity):
         """Initialize the volume number entity."""
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_volume_control"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_volume_control"
+        )
 
     @property
     def native_value(self):
@@ -98,6 +102,9 @@ class RemiNoiseThresholdNumber(RemiEntity, NumberEntity):
         """Initialize the noise threshold number entity."""
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_noise_threshold"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_noise_threshold"
+        )
 
     @property
     def native_value(self):
@@ -152,6 +159,9 @@ class RemiNightFaceLevel(RemiEntity, NumberEntity):
         """Initialize the night face level number entity."""
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_night_face_level"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_night_face_level"
+        )
 
     @property
     def native_value(self):

@@ -7,6 +7,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.const import EntityCategory
+from homeassistant.util import slugify
 
 from .coordinator import RemiCoordinator
 from .entity import RemiEntity
@@ -52,6 +53,9 @@ class RemiConnectivityBinarySensor(RemiEntity, BinarySensorEntity):
         """Initialize the connectivity binary sensor."""
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_connectivity"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_connectivity"
+        )
 
     @property
     def is_on(self):
@@ -86,6 +90,9 @@ class RemiAliveBinarySensor(RemiEntity, BinarySensorEntity):
     def __init__(self, coordinator: RemiCoordinator, device):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_alive"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_alive"
+        )
 
     @property
     def is_on(self):
@@ -110,6 +117,9 @@ class RemiFirmwareUpdateBinarySensor(RemiEntity, BinarySensorEntity):
     def __init__(self, coordinator: RemiCoordinator, device):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{self._device_id}_firmware_update"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_firmware_update"
+        )
 
     @property
     def is_on(self):

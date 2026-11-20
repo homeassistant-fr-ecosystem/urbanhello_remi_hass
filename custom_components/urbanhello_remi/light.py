@@ -7,6 +7,7 @@ from homeassistant.components.light import (  # type: ignore[attr-defined]
     ColorMode,
     LightEntity,
 )
+from homeassistant.util import slugify
 
 from .coordinator import RemiCoordinator
 from .entity import RemiEntity
@@ -49,6 +50,9 @@ class RemiNightLight(RemiEntity, LightEntity):
         """Initialize the night light."""
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_night_light"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_night_light"
+        )
         self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
 
     @property

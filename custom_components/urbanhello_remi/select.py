@@ -4,6 +4,7 @@ import logging
 from typing import ClassVar
 
 from homeassistant.components.select import SelectEntity
+from homeassistant.util import slugify
 
 from .const import (
     FACE_MAP_API_TO_HA,
@@ -51,6 +52,9 @@ class RemiFaceSelect(RemiEntity, SelectEntity):
         """Initialize the face select entity."""
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_face_select"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_face_select"
+        )
 
     @property
     def current_option(self):
@@ -124,6 +128,9 @@ class RemiClockFormatSelect(RemiEntity, SelectEntity):
     def __init__(self, coordinator: RemiCoordinator, api, device):
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_clock_format"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_clock_format"
+        )
 
     @property
     def current_option(self):
@@ -152,6 +159,9 @@ class RemiMusicModeSelect(RemiEntity, SelectEntity):
     def __init__(self, coordinator: RemiCoordinator, api, device):
         super().__init__(coordinator, device, api)
         self._attr_unique_id = f"{self._device_id}_music_mode"
+        self._attr_suggested_object_id = (
+            f"{slugify(self._device_name)}_music_mode"
+        )
         self._attr_options = list(MUSIC_MODE_OPTIONS.values())
 
     @property
