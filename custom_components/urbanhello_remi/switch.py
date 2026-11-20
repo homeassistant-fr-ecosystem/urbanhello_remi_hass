@@ -8,30 +8,29 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    build_alarm_key,
+    DOMAIN,
+    build_alarm_suggested_object_id,
     build_alarm_unique_id,
-    find_alarm,
+    get_device_info,
 )
 from .coordinator import RemiCoordinator
-from .entity import RemiEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    _hass: HomeAssistant,
-    entry: ConfigEntry,
+    hass: HomeAssistant,
+    _entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Rémi alarm clock switch entities."""
-    api = entry.runtime_data.api
-    devices = entry.runtime_data.devices
-    coordinators = entry.runtime_data.coordinators
-    alarm_store = entry.runtime_data.alarm_store
+    api = hass.data[DOMAIN]["api"]
+    devices = hass.data[DOMAIN]["devices"]
+    coordinators = hass.data[DOMAIN]["coordinators"]
 
     entities = []
     for device in devices:
@@ -55,14 +54,7 @@ async def async_setup_entry(
         )
 
         # Create switch entities for each alarm
-        for alarm_object_id, raw_alarm_data in alarms_dict.items():
-            alarm_data = raw_alarm_data or {}
-            alarm_key = build_alarm_key(
-                alarm_object_id, alarm_data.get("name"), alarms_dict
-            )
-            stable_uuid = alarm_store.resolve_uuid(
-                device_id, alarm_key, alarm_data
-            )
+        for alarm_object_id, _alarm_data in alarms_dict.items():
             entities.append(
                 RemiAlarmSwitch(
                     coordinator=coordinator,
@@ -71,14 +63,13 @@ async def async_setup_entry(
                     device_name=device_name,
                     device_data=device,
                     alarm_object_id=alarm_object_id,
-                    stable_uuid=stable_uuid,
                 )
             )
 
     async_add_entities(entities)
 
 
-class RemiAlarmSwitch(RemiEntity, SwitchEntity):
+class RemiAlarmSwitch(CoordinatorEntity, SwitchEntity):
     """Representation of a Rémi alarm clock enable/disable switch."""
 
     _attr_translation_key = "alarm"
@@ -86,67 +77,41 @@ class RemiAlarmSwitch(RemiEntity, SwitchEntity):
     def __init__(
         self,
         coordinator: RemiCoordinator,
-        *,
         api,
         device_id: str,
         device_name: str,
-        device_data: dict[str, Any],
+        device_data: dict,
         alarm_object_id: str,
-        stable_uuid: str,
     ) -> None:
         """Initialize the alarm clock switch entity."""
-        super().__init__(coordinator, device_data, api)
+        super().__init__(coordinator)
+        self._api = api
+        self._device_id = device_id
+        self._device_name = device_name
+        self._device_data = device_data
         self._alarm_object_id = alarm_object_id
-        self._stable_uuid = stable_uuid
 
-        # Set entity attributes with a stable UUID-based unique_id
+        # Set entity attributes with correct objectId-based unique_id
         # Entity naming must match remi-card expectations:
         # remi-card looks for time.{device_name}_* and expects matching switch.{device_name}_*
         alarms = coordinator.data.get("alarms", {}) if coordinator.data else {}
         alarm_data = alarms.get(alarm_object_id, {})
-        alarm_name = alarm_data.get("name", "Alarm")
-        self._alarm_key = build_alarm_key(
-            alarm_object_id, alarm_data.get("name"), alarms
-        )
+        alarm_name = alarm_data.get("name") or "Alarm"
 
-        # Use alarm name for entity_id, stable UUID for unique_id
-        alarm_name_slug = alarm_name.lower().replace(" ", "_")
-
-        # _attr_has_entity_name (from RemiEntity) prepends the device name,
-        # so set only the alarm-specific name part to avoid "Rémi Rémi Alarm".
-        self._attr_name = alarm_name
+        self._attr_name = f"{device_name} {alarm_name}"
         self._attr_unique_id = build_alarm_unique_id(
-            device_id, stable_uuid, "enabled"
+            device_id, alarm_object_id, alarm_name, alarms, "enabled"
         )
-        self._attr_suggested_object_id = f"{device_name.lower()}_{alarm_name_slug}"
-
-    def _resolve_alarm(self) -> tuple[str | None, dict[str, Any]]:
-        """Return the current objectId and data of this alarm."""
-        data = self.coordinator.data or {}
-        alarms = data.get("alarms", {})
-        return find_alarm(alarms, self._alarm_object_id, self._alarm_key)
+        self._attr_suggested_object_id = build_alarm_suggested_object_id(
+            device_name, alarm_name
+        )
 
     @property
-    def alarm_object_id(self) -> str | None:
-        """Return the alarm's current objectId, or None when it is gone."""
-        object_id, _ = self._resolve_alarm()
-        if object_id is not None:
-            self._alarm_object_id = object_id
-        return object_id
-
-    @property
-    def alarm_data(self) -> dict[str, Any]:
+    def alarm_data(self) -> dict:
         """Get current alarm data from coordinator."""
-        _, data = self._resolve_alarm()
-        return data
-
-    def _require_alarm_id(self) -> str:
-        """Return the current objectId, or fail the action if the alarm is gone."""
-        object_id = self.alarm_object_id
-        if object_id is None:
-            msg = f"Alarm '{self._attr_name}' no longer exists on the device"
-            raise HomeAssistantError(msg)
-        return object_id
+        if self.coordinator.data and "alarms" in self.coordinator.data:
+            return self.coordinator.data["alarms"].get(self._alarm_object_id, {})
+        return {}
 
     @property
     def is_on(self) -> bool:
@@ -161,9 +126,16 @@ class RemiAlarmSwitch(RemiEntity, SwitchEntity):
         _LOGGER.info(
             "Initialized alarm switch '%s' (objectId: %s) for device %s - State: %s",
             alarm_name,
-            self.alarm_object_id,
+            self._alarm_object_id,
             self._device_id,
             "enabled" if self.is_on else "disabled",
+        )
+
+    @property
+    def device_info(self):
+        """Return device information."""
+        return get_device_info(
+            DOMAIN, self._device_id, self._device_name, self._device_data
         )
 
     @property
@@ -175,15 +147,14 @@ class RemiAlarmSwitch(RemiEntity, SwitchEntity):
 
     async def async_turn_on(self, **_kwargs: Any) -> None:
         """Turn the alarm clock on."""
-        object_id = self._require_alarm_id()
         try:
             # Update via API
-            await self._api.enable_alarm(self._device_id, object_id)
+            await self._api.enable_alarm(self._device_id, self._alarm_object_id)
 
             _LOGGER.info(
                 "Enabled alarm '%s' (objectId: %s) for device %s",
                 self.alarm_data.get("name", "Alarm"),
-                object_id,
+                self._alarm_object_id,
                 self._device_id,
             )
 
@@ -193,22 +164,21 @@ class RemiAlarmSwitch(RemiEntity, SwitchEntity):
         except Exception as e:
             _LOGGER.error(
                 "Failed to enable alarm %s: %s",
-                object_id,
+                self._alarm_object_id,
                 e,
             )
             raise
 
     async def async_turn_off(self, **_kwargs: Any) -> None:
         """Turn the alarm clock off."""
-        object_id = self._require_alarm_id()
         try:
             # Update via API
-            await self._api.disable_alarm(self._device_id, object_id)
+            await self._api.disable_alarm(self._device_id, self._alarm_object_id)
 
             _LOGGER.info(
                 "Disabled alarm '%s' (objectId: %s) for device %s",
                 self.alarm_data.get("name", "Alarm"),
-                object_id,
+                self._alarm_object_id,
                 self._device_id,
             )
 
@@ -218,7 +188,7 @@ class RemiAlarmSwitch(RemiEntity, SwitchEntity):
         except Exception as e:
             _LOGGER.error(
                 "Failed to disable alarm %s: %s",
-                object_id,
+                self._alarm_object_id,
                 e,
             )
             raise
@@ -226,7 +196,7 @@ class RemiAlarmSwitch(RemiEntity, SwitchEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return super().available and self.alarm_object_id is not None
+        return True
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -238,8 +208,8 @@ class RemiAlarmSwitch(RemiEntity, SwitchEntity):
         if alarm_name is not None:
             attributes["name"] = alarm_name
 
-        if self.alarm_object_id is not None:
-            attributes["alarm_id"] = self.alarm_object_id
+        if self._alarm_object_id is not None:
+            attributes["alarm_id"] = self._alarm_object_id
 
         brightness = alarm_data.get("brightness")
         if brightness is not None:

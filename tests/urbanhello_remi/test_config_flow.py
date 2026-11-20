@@ -17,7 +17,7 @@ async def test_flow_user(hass: HomeAssistant) -> None:
     assert result["step_id"] == "user"
 
     with patch(
-        "custom_components.urbanhello_remi_hass.api.RemiAPI.login",
+        "custom_components.urbanhello_remi.api.RemiAPI.login",
         return_value={"sessionToken": "test_token"},
     ):
         result = await hass.config_entries.flow.async_configure(

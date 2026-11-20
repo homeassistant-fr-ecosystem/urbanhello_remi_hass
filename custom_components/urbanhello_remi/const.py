@@ -47,6 +47,20 @@ def _device_version(value: Any) -> str | None:
     return None if value is None else str(value)
 
 
+def _normalize_mac(value: str | None) -> str | None:
+    """Normalize a MAC address to the canonical XX:XX:XX:XX:XX:XX format.
+
+    Accepts common separators (``:``, ``-``, ``.``) or no separator at all.
+    Returns ``None`` when the value is missing or not a valid 6-byte MAC.
+    """
+    if not value:
+        return None
+    cleaned = value.replace(":", "").replace("-", "").replace(".", "").strip().upper()
+    if len(cleaned) != 12 or any(c not in "0123456789ABCDEF" for c in cleaned):
+        return None
+    return ":".join(cleaned[i : i + 2] for i in range(0, 12, 2))
+
+
 def get_device_info(
     domain: str,
     device_id: str,
@@ -56,6 +70,12 @@ def get_device_info(
     """Generate device info dictionary for Home Assistant."""
     device_data = device_data or {}
     raw_data = device_data.get("raw", {})
+    connections: set[tuple[str, str]] = set()
+    if ipv4 := raw_data.get("ipv4Address"):
+        connections.add(("ip", ipv4))
+    mac = _normalize_mac(raw_data.get("macAddress"))
+    if mac:
+        connections.add(("mac", mac))
     return DeviceInfo(
         identifiers={(domain, device_id)},
         name=device_name,
@@ -63,11 +83,7 @@ def get_device_info(
         model=MODEL,
         sw_version=_device_version(raw_data.get("current_firmware_version")),
         hw_version=_device_version(raw_data.get("bt_hardware_version")),
-        connections=(
-            {("ip", raw_data.get("ipv4Address"))}
-            if raw_data.get("ipv4Address")
-            else set()
-        ),
+        connections=connections,
     )
 
 
@@ -106,39 +122,19 @@ def build_alarm_unique_id(
     stable_uuid: str,
     suffix: str,
 ) -> str:
-    """Return the unique_id of an alarm entity.
+    """Return the unique_id of an alarm entity."""
+    key = build_alarm_key(alarm_object_id, alarm_name, alarms)
+    return f"{device_id}_alarm_{key}_{suffix}"
 
-    Uses a stable, locally-generated UUID instead of the server-generated
-    objectId or the mutable alarm name, so renaming an alarm or objectId
-    rotation does not create duplicate entities.
+
+def build_alarm_suggested_object_id(
+    device_name: str,
+    alarm_name: str | None,
+) -> str:
+    """Return the suggested entity_id of an alarm entity.
+
+    Device and alarm names can contain accents, spaces or punctuation that are
+    not valid in an entity_id. Both parts go through the same ``slugify``
+    normalization as the unique_id built by :func:`build_alarm_key`.
     """
-    return f"{device_id}_alarm_{stable_uuid}_{suffix}"
-
-
-def find_alarm(
-    alarms: dict[str, Any],
-    alarm_object_id: str | None,
-    alarm_key: str,
-) -> tuple[str | None, dict[str, Any]]:
-    """Locate an alarm in the latest coordinator payload.
-
-    Parse regenerates the ``objectId`` of an ``Event`` when the Rémi is
-    re-registered (unplugged/plugged back in) or when the alarm is edited from
-    the UrbanHello app. Entities keep the id they were created with, so fall
-    back to the stable name-based key to follow the alarm instead of showing
-    stale values and failing writes.
-
-    Returns the current objectId (or ``None`` when the alarm is gone) and its
-    data.
-    """
-    if alarm_object_id is not None:
-        data = alarms.get(alarm_object_id)
-        if data is not None:
-            return alarm_object_id, data
-
-    for object_id, raw_alarm in alarms.items():
-        candidate = raw_alarm or {}
-        if build_alarm_key(object_id, candidate.get("name"), alarms) == alarm_key:
-            return object_id, candidate
-
-    return None, {}
+    return f"{slugify(device_name)}_{slugify(alarm_name or 'alarm')}"
